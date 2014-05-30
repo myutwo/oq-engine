@@ -69,7 +69,8 @@ GRANT ALL ON SCHEMA uiapi TO oq_admin;
 
 -- hzrdi schema
 GRANT SELECT,INSERT ON hzrdi.hazard_site            TO oq_job_init;
-GRANT SELECT,INSERT ON hzrdi.site_model           TO oq_job_init;
+GRANT SELECT,INSERT ON hzrdi.site_model             TO oq_job_init;
+GRANT SELECT,INSERT ON hzrdi.imt                    TO oq_job_init;
 
 -- hzrdr schema
 GRANT SELECT,INSERT        ON hzrdr.hazard_curve      TO oq_job_init;
@@ -87,6 +88,7 @@ GRANT SELECT, INSERT       ON hzrdr.assoc_lt_rlz_trt_model TO oq_job_init;
 GRANT SELECT,INSERT        ON hzrdr.ses_collection    TO oq_job_init;
 GRANT SELECT,INSERT        ON hzrdr.ses_rupture       TO oq_job_init;
 GRANT SELECT,INSERT        ON hzrdr.probabilistic_rupture TO oq_job_init;
+GRANT SELECT, INSERT       ON hzrdr.gmf_rupture       TO oq_job_init;
 
 -- riski schema
 GRANT SELECT,INSERT ON ALL TABLES IN SCHEMA riski   TO oq_job_init;

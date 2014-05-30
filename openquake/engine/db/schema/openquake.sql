@@ -77,6 +77,22 @@ CREATE TABLE hzrdi.site_model (
 ) TABLESPACE hzrdi_ts;
 SELECT AddGeometryColumn('hzrdi', 'site_model', 'location', 4326, 'POINT', 2);
 
+-- table for the intensity measure types
+CREATE TABLE hzrdi.imt(
+  id SERIAL PRIMARY KEY,
+  imt_str VARCHAR UNIQUE NOT NULL -- full string representation of the IMT
+    CHECK(imt_str = CASE
+          WHEN im_type = 'SA' THEN 'SA(' || sa_period::TEXT || ')'
+          ELSE im_type END),
+  im_type VARCHAR NOT NULL, -- short string for the IMT
+  sa_period FLOAT CONSTRAINT imt_sa_period
+        CHECK(((im_type = 'SA') AND (sa_period IS NOT NULL))
+              OR ((im_type != 'SA') AND (sa_period IS NULL))),
+  sa_damping FLOAT CONSTRAINT imt_sa_damping
+        CHECK(((im_type = 'SA') AND (sa_damping IS NOT NULL))
+            OR ((im_type != 'SA') AND (sa_damping IS NULL))),
+  UNIQUE (im_type, sa_period, sa_damping)
+) TABLESPACE hzrdi_ts;
 
 -- An OpenQuake engine run started by the user
 CREATE TABLE uiapi.oq_job (
@@ -406,6 +422,15 @@ CREATE TABLE hzrdr.ses_rupture (
     seed INTEGER NOT NULL
 ) TABLESPACE hzrdr_ts;
 
+
+-- gmf_rupture table ---------------------------------------------------
+CREATE TABLE hzrdr.gmf_rupture (
+   id SERIAL PRIMARY KEY,
+   rupture_id INTEGER NOT NULL,  -- fk to hzrdr.ses_rupture
+   gsim TEXT NOT NULL,
+   imt TEXT NOT NULL, -- fk to hzrdi.imt
+   ground_motion_field FLOAT[] NOT NULL
+) TABLESPACE hzrdr_ts;
 
 CREATE TABLE hzrdr.gmf (
     id SERIAL PRIMARY KEY,
@@ -1100,6 +1125,20 @@ ALTER TABLE hzrdi.hazard_site
 ADD CONSTRAINT hzrdi_hazard_site_hazard_calculation_fk
 FOREIGN KEY (hazard_calculation_id)
 REFERENCES uiapi.hazard_calculation(id)
+ON DELETE CASCADE;
+
+-- hzrdr.gmf_rupture -> hzrdr.ses_rupture FK
+ALTER TABLE hzrdr.gmf_rupture
+ADD CONSTRAINT hzrdr_gmf_rupture_ses_rupture_fk
+FOREIGN KEY (rupture_id)
+REFERENCES hzrdr.ses_rupture(id)
+ON DELETE CASCADE;
+
+-- hzrdr.gmf_rupture -> hzrdi.imt FK
+ALTER TABLE hzrdr.gmf_rupture
+ADD CONSTRAINT hzrdr_gmf_rupture_imt_fk
+FOREIGN KEY (imt)
+REFERENCES hzrdi.imt(imt_str)
 ON DELETE CASCADE;
 
 -- hzrdr.gmf_data to hzrdi.hazard_site FK
