@@ -122,3 +122,6 @@ GRANT SELECT,INSERT,UPDATE ON uiapi.risk_calculation   TO oq_job_init;
 
 GRANT SELECT,INSERT,UPDATE ON uiapi.output             TO oq_job_init;
 GRANT SELECT,INSERT,DELETE ON uiapi.performance        TO oq_job_init;
+
+-- views
+GRANT SELECT ON hzrdr.gmf_view TO oq_job_init;

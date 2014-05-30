@@ -75,3 +75,25 @@ SELECT output_id, gmf_id, imt, sa_period, sa_damping,
   INNER JOIN hzrdr.gmf AS b
   ON a.gmf_id=b.id
   GROUP BY output_id, b.id, imt, sa_period, sa_damping) AS x;
+
+
+-- typical usage is
+--   select ses_rup_id, tag, trt_model_id, gsim, imt,
+--   array_length(site_indices, 1) as num_sites,
+--   array_length(ground_motion_field, 1) as num_gmvs
+--   from hzrdr.gmf_view where rlz_id=1 and ses_ordinal=1 order by tag;
+CREATE OR REPLACE VIEW hzrdr.gmf_view AS
+   SELECT d.id as ses_rup_id, d.tag, b.trt_model_id,
+   ses_collection_id, ses_id AS ses_ordinal,
+   a.gsim, imt, site_indices, ground_motion_field, rlz_id
+   FROM hzrdr.assoc_lt_rlz_trt_model AS a,
+   hzrdr.probabilistic_rupture AS b,
+   hzrdr.gmf_rupture AS c,
+   hzrdr.ses_rupture AS d,
+   hzrdr.lt_realization AS e
+   WHERE c.rupture_id=d.id
+   AND d.id=c.rupture_id
+   AND d.rupture_id=b.id
+   AND a.trt_model_id=b.trt_model_id
+   AND c.gsim=a.gsim
+   AND a.rlz_id=e.id;

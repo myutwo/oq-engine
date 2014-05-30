@@ -149,7 +149,7 @@ def compute_ruptures(
                     indices = r_sites.indices if len(r_sites) < len(sitecol) \
                         else None  # None means that nothing was filtered
                     prob_rup = models.ProbabilisticRupture.create(
-                        rup, ses_coll, indices)
+                        rup, ses_coll, trt_model, indices)
                     for ses, num_occurrences in ses_num_occ[rup]:
                         for occ_no in range(1, num_occurrences + 1):
                             rup_seed = rnd.randint(0, models.MAX_SINT_32)
@@ -266,6 +266,9 @@ class GmfCalculator(object):
                                    self.params['correl_model'])
         for rupid, seed in rupid_seed_pairs:
             for (gsim_name, imt), gmvs in computer.compute(seed).iteritems():
+                models.GmfRupture.objects.create(
+                    rupture_id=rupid, gsim=gsim_name, imt=str(imt),
+                    ground_motion_field=gmvs)
                 for site_id, gmv in zip(r_sites.sids, gmvs):
                     if gmv:
                         self.gmvs_per_site[

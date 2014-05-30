@@ -1,6 +1,15 @@
 -- this is convenient to have tests changing the risk parameters on the fly
 GRANT SELECT,INSERT,UPDATE ON uiapi.risk_calculation TO oq_job_init;
 
+ALTER TABLE hzrdr.probabilistic_rupture DROP COLUMN tectonic_region_type;
+ALTER TABLE hzrdr.probabilistic_rupture ADD COLUMN trt_model_id INTEGER;
+
+-- hzrdr.probabilistic_rupture to hzrdr.trt_model FK
+ALTER TABLE hzrdr.probabilistic_rupture
+ADD CONSTRAINT hzrdr_probabilistic_rupture_trt_model_fk
+FOREIGN KEY (trt_model_id) REFERENCES hzrdr.trt_model(id)
+ON DELETE CASCADE;
+
 -- imt table ----------------------------------------------------------
 /*
 NB: the imt_check
@@ -78,3 +87,22 @@ ON DELETE CASCADE;
 
 -- drop gmf_data
 -- DROP TABLE hzrdr.gmf_data;
+
+-- gmf_view
+CREATE OR REPLACE VIEW hzrdr.gmf_view AS
+   SELECT d.id as ses_rup_id, d.tag, b.trt_model_id,
+   ses_collection_id, ses_id AS ses_ordinal,
+   a.gsim, imt, site_indices, ground_motion_field, rlz_id
+   FROM hzrdr.assoc_lt_rlz_trt_model AS a,
+   hzrdr.probabilistic_rupture AS b,
+   hzrdr.gmf_rupture AS c,
+   hzrdr.ses_rupture AS d,
+   hzrdr.lt_realization AS e
+   WHERE c.rupture_id=d.id
+   AND d.id=c.rupture_id
+   AND d.rupture_id=b.id
+   AND a.trt_model_id=b.trt_model_id
+   AND c.gsim=a.gsim
+   AND a.rlz_id=e.id;
+
+GRANT SELECT ON hzrdr.gmf_view TO oq_job_init;

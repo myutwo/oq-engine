@@ -176,6 +176,9 @@ class BaseHazardCalculator(base.Calculator):
         Initialize risk models, site model and sources
         """
         self.parse_risk_models()
+        with transaction.commit_on_success(using='job_init'):
+            # if you don't use a transaction, errors will be eaten
+            models.Imt.save_new(self.hc.intensity_measure_types)
         self.initialize_site_model()
         self.initialize_sources()
 

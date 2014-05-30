@@ -404,12 +404,12 @@ CREATE TABLE hzrdr.probabilistic_rupture (
     id SERIAL PRIMARY KEY,
     ses_collection_id INTEGER NOT NULL,
     rake float NOT NULL,
-    tectonic_region_type VARCHAR NOT NULL,
     is_from_fault_source BOOLEAN NOT NULL,
     is_multi_surface BOOLEAN NOT NULL,
     surface BYTEA NOT NULL,
     magnitude float NOT NULL,
-    site_indices INTEGER[]
+    site_indices INTEGER[],
+    trt_model_id INTEGER NOT NULL
 ) TABLESPACE hzrdr_ts;
 SELECT AddGeometryColumn('hzrdr', 'probabilistic_rupture', 'hypocenter', 4326, 'POINT', 2);
 
@@ -1022,6 +1022,12 @@ FOREIGN KEY (ses_collection_id) REFERENCES hzrdr.ses_collection(id);
 ALTER TABLE hzrdr.ses_rupture
 ADD CONSTRAINT hzrdr_ses_rupture_probabilistic_rupture_fk
 FOREIGN KEY (rupture_id) REFERENCES hzrdr.probabilistic_rupture(id)
+ON DELETE CASCADE;
+
+-- hzrdr.ses_rupture to hzrdr.trt_model FK
+ALTER TABLE hzrdr.probabilistic_rupture
+ADD CONSTRAINT hzrdr_probabilistic_rupture_trt_model_fk
+FOREIGN KEY (trt_model_id) REFERENCES hzrdr.trt_model(id)
 ON DELETE CASCADE;
 
 ALTER TABLE riskr.loss_map
