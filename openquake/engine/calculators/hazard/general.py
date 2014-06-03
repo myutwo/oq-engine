@@ -103,6 +103,7 @@ class BaseHazardCalculator(base.Calculator):
         self.source_max_weight = int(config.get('hazard', 'source_max_weight'))
         self.rupt_collector = {}  # (trt_model_id, task_no) -> rupture_data
         self.num_ruptures = collections.defaultdict(float)
+        self.site_ruptures = collections.defaultdict(set)
 
     @property
     def hc(self):

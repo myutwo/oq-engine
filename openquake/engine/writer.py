@@ -153,7 +153,7 @@ class CacheInserter(object):
                 col = 'SRID=4326;' + col.wkt
             elif isinstance(col, GeometryField):
                 col = col.wkt()
-            elif isinstance(col, (tuple, list)):
+            elif isinstance(col, (tuple, list, set)):
                 # for numeric arrays; this is fragile
                 col = self.array_to_pgstring(col)
             else:
@@ -164,7 +164,7 @@ class CacheInserter(object):
     @staticmethod
     def array_to_pgstring(a):
         """
-        Convert a Python list/array into the Postgres string-representation
+        Convert a Python set/list/array into the Postgres string-representation
         of it.
         """
         ls = []

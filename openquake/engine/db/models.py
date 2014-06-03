@@ -3588,3 +3588,18 @@ class HazardSite(djm.Model):
 
     class Meta:
         db_table = 'hzrdi\".\"hazard_site'
+
+
+class SiteRuptures(djm.Model):
+    """
+    Associations site_id -> ruptures contributing to that site
+    """
+    site = djm.ForeignKey('HazardSite')
+    rupture_ids = djm.IntegerField(null=False)
+
+    class Meta:
+        db_table = 'hzrdr\".\"site_ruptures'
+
+    @property
+    def ruptures(self):
+        return ProbabilisticRupture.objects.filter(pk__in=self.rupture_ids)
