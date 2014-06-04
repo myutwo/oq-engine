@@ -269,11 +269,11 @@ class GmfCalculator(object):
                 models.GmfRupture.objects.create(
                     rupture_id=rupid, gsim=gsim_name, imt=str(imt),
                     ground_motion_field=gmvs)
-                for site_id, gmv in zip(r_sites.sids, gmvs):
-                    if gmv:
-                        self.gmvs_per_site[
-                            gsim_name, imt, site_id].append(gmv)
-                        self.ruptures_per_site[
+            for site_id, gmv in zip(r_sites.sids, gmvs):
+                if gmv:
+                    self.gmvs_per_site[
+                        gsim_name, imt, site_id].append(gmv)
+                    self.ruptures_per_site[
                             gsim_name, imt, site_id].append(rupid)
 
     def save_gmfs(self, rlzs):

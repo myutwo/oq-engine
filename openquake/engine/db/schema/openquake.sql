@@ -80,10 +80,7 @@ SELECT AddGeometryColumn('hzrdi', 'site_model', 'location', 4326, 'POINT', 2);
 -- table for the intensity measure types
 CREATE TABLE hzrdi.imt(
   id SERIAL PRIMARY KEY,
-  imt_str VARCHAR UNIQUE NOT NULL -- full string representation of the IMT
-    CHECK(imt_str = CASE
-          WHEN im_type = 'SA' THEN 'SA(' || sa_period::TEXT || ')'
-          ELSE im_type END),
+  imt_str VARCHAR UNIQUE NOT NULL, -- full string representation of the IMT
   im_type VARCHAR NOT NULL, -- short string for the IMT
   sa_period FLOAT CONSTRAINT imt_sa_period
         CHECK(((im_type = 'SA') AND (sa_period IS NOT NULL))
