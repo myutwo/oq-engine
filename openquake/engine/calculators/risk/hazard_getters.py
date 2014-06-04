@@ -36,7 +36,15 @@ BYTES_PER_FLOAT = numpy.zeros(1, dtype=float).nbytes
 
 
 class AssetSiteAssociationError(Exception):
-    pass
+    """
+    No asset <-> site association found
+    """
+
+
+class NoHazardError(Exception):
+    """
+    No hazard data found
+    """
 
 
 def make_epsilons(asset_count, num_ruptures, seed, correlation,
@@ -178,6 +186,9 @@ class GroundMotionValuesGetter(HazardGetter):
             rupture_ids.append(ses_rup.id)
             site2gmv[ses_rup.id] = dict(zip(sites, gmf))
 
+        if not site2gmv:
+            raise NoHazardError('No data for output=%s, imt=%s' %
+                                (self.hazard_output, imt))
         all_gmvs = []
         for site_id in self.site_ids:
             array = numpy.array([site2gmv[r].get(site_id, 0.)

@@ -591,9 +591,26 @@ def create_ses_ruptures(job, ses_collection, num):
     Each rupture has a magnitude ranging from 0 to 10 and no geographic
     information.
     """
+    lt_model = models.LtSourceModel.objects.create(
+        hazard_calculation=job.hazard_calculation,
+        ordinal=0,
+        sm_lt_path=['b1'],
+        sm_name='test source model',
+        weight=1,
+    )
+    trt = "test region type"
+    trt_model = models.TrtModel.objects.create(
+        lt_model=lt_model,
+        tectonic_region_type=trt,
+        num_sources=1,
+        num_ruptures=1,
+        min_mag=4,
+        max_mag=6,
+        gsims=[],
+    )
     rupture = ParametricProbabilisticRupture(
         mag=1 + 10. / float(num), rake=0,
-        tectonic_region_type="test region type",
+        tectonic_region_type=trt,
         hypocenter=Point(0, 0, 0.1),
         surface=PlanarSurface(
             10, 11, 12, Point(0, 0, 1), Point(1, 0, 1),
@@ -603,7 +620,7 @@ def create_ses_ruptures(job, ses_collection, num):
         source_typology=object())
     ses = models.SES(ses_collection, ordinal=1)
     seed = 42
-    pr = models.ProbabilisticRupture.create(rupture, ses_collection)
+    pr = models.ProbabilisticRupture.create(rupture, ses_collection, trt_model)
     return [models.SESRupture.create(pr, ses, 'test', 1, i, seed + i)
             for i in range(num)]
 
