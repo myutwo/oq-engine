@@ -95,10 +95,14 @@ class GroundMotionValuesGetterTestCase(HazardCurveGetterTestCase):
         # maximum distance; there is one realization and three ruptures
         a1, a3 = self.assets
         self.assertEqual(self.getter.assets, [a1])
+        # a1 is associated to site1 with coordinates (15.48, 38.091)
+        site1 = models.HazardSite.objects.get(pk__in=self.getter.site_ids)
+        self.assertEqual(
+            (site1.location.x, site1.location.y), (15.48, 38.091))
         rupture_ids = self.getter.rupture_ids
         self.assertEqual(len(rupture_ids), 3)
-        [gmvs] = self.getter.get_data(self.imt)
-        numpy.testing.assert_allclose([0.1, 0.2, 0.3], gmvs)
+        [gmvs] = self.getter.get_data(self.imt)  # values for a1 i.e. site1
+        numpy.testing.assert_allclose([0.3, 0.3, 0.3], gmvs)
 
 
 class ScenarioGetterTestCase(GroundMotionValuesGetterTestCase):
