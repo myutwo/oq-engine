@@ -406,6 +406,24 @@ def create_gmf_data_records(hazard_job, rlz=None, ses_coll=None, points=None):
             rupture_ids=[r.id for r in ruptures],
             site_id=site_id))
 
+    models.Imt.save_new(['PGA'])
+    for rupt in ruptures:
+        models.GmfRupture.objects.create(
+            rupture=rupt,
+            gsim='TestGSIM',
+            imt='PGA',
+            ground_motion_field=[0.1, 0.2, 0.3],
+        )
+    assoc = models.AssocLtRlzTrtModel.objects.filter(
+        rlz=gmf.lt_realization,
+        trt_model=rupt.rupture.trt_model,
+        gsim='TestGSIM').count()
+    if not assoc:
+        models.AssocLtRlzTrtModel.objects.create(
+            rlz=gmf.lt_realization,
+            trt_model=rupt.rupture.trt_model,
+            gsim='TestGSIM',
+        )
     return records
 
 
@@ -502,6 +520,7 @@ def get_fake_risk_job(risk_cfg, hazard_cfg, output_type="curve",
     """
 
     hazard_job = get_job(hazard_cfg, username)
+    models.JobStats.objects.create(oq_job=hazard_job)
     hc = hazard_job.hazard_calculation
 
     lt_model = models.LtSourceModel.objects.create(
