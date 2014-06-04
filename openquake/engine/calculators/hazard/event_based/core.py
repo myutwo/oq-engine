@@ -261,20 +261,23 @@ class GmfCalculator(object):
         :param seed:
             an integer to be used as stochastic seed
         """
+        inserter = writer.CacheInserter(models.GmfRupture, 1000)
         computer = gmf.GmfComputer(rupture, r_sites, self.imts, self.gsims,
                                    self.params['truncation_level'],
                                    self.params['correl_model'])
         for rupid, seed in rupid_seed_pairs:
             for (gsim_name, imt), gmvs in computer.compute(seed).iteritems():
-                models.GmfRupture.objects.create(
-                    rupture_id=rupid, gsim=gsim_name, imt=str(imt),
-                    ground_motion_field=gmvs)
+                inserter.add(
+                    models.GmfRupture(
+                        rupture_id=rupid, gsim=gsim_name, imt=str(imt),
+                        ground_motion_field=list(gmvs)))
                 for site_id, gmv in zip(r_sites.sids, gmvs):
                     if gmv:
                         self.gmvs_per_site[
                             gsim_name, imt, site_id].append(gmv)
                         self.ruptures_per_site[
                             gsim_name, imt, site_id].append(rupid)
+        inserter.flush()
 
     def save_gmfs(self, rlzs):
         """

@@ -182,9 +182,9 @@ class GroundMotionValuesGetter(HazardGetter):
         gmf = self.hazard_output.output_container
         site2gmv = {}
         rupture_ids = []
-        for ses_rup, sites, gmf in gmf.get_data(imt):
+        for ses_rup, sites, gmfarray in gmf.get_data(imt):
             rupture_ids.append(ses_rup.id)
-            site2gmv[ses_rup.id] = dict(zip(sites, gmf))
+            site2gmv[ses_rup.id] = dict(zip(sites.sids, gmfarray))
 
         if not site2gmv:
             raise NoHazardError('No data for output=%s, imt=%s' %
