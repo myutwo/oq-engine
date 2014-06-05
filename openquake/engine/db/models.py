@@ -2395,7 +2395,7 @@ class TrtModel(djm.Model):
     """
     Source submodel containing sources of the same tectonic region type.
     """
-    lt_model = djm.ForeignKey('LtSourceModel')
+    lt_model = djm.ForeignKey('LtSourceModel', null=True)
     tectonic_region_type = djm.TextField(null=False)
     num_sources = djm.IntegerField(null=False)
     num_ruptures = djm.IntegerField(null=False)
@@ -2412,7 +2412,7 @@ class TrtModel(djm.Model):
         """
         assert gsim_name in self.gsims, gsim_name
         for art in AssocLtRlzTrtModel.objects.filter(
-                trt_model=self.id, gsim=gsim_name):
+                trt_modl=self.id, gsim=gsim_name):
             yield art.rlz
 
     def get_rlzs_by_gsim(self):

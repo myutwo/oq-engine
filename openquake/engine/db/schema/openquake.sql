@@ -544,7 +544,7 @@ CREATE TABLE hzrdr.lt_source_model (
 -- logic tree source model infos
 CREATE TABLE hzrdr.trt_model (
    id SERIAL PRIMARY KEY,
-   lt_model_id INTEGER NOT NULL, -- fk to lt_source_model
+   lt_model_id INTEGER, -- fk to lt_source_model
    tectonic_region_type TEXT NOT NULL,
    num_sources INTEGER NOT NULL,
    num_ruptures INTEGER NOT NULL,

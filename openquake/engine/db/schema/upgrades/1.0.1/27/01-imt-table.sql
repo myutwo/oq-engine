@@ -10,6 +10,8 @@ ADD CONSTRAINT hzrdr_probabilistic_rupture_trt_model_fk
 FOREIGN KEY (trt_model_id) REFERENCES hzrdr.trt_model(id)
 ON DELETE CASCADE;
 
+ALTER TABLE hzrdr.trt_model ALTER COLUMN lt_model_id DROP NOT NULL;
+
 -- imt table ----------------------------------------------------------
 /*
 NB: the imt_check
