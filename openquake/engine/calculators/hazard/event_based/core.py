@@ -344,10 +344,12 @@ class EventBasedHazardCalculator(general.BaseHazardCalculator):
 
     @EnginePerformanceMonitor.monitor
     def post_execute(self):
-        for trt_id, num_ruptures in self.num_ruptures.iteritems():
-            trt = models.TrtModel.objects.get(pk=trt_id)
-            trt.num_ruptures = num_ruptures
-            trt.save()
+        # first reset the number of ruptures to number of
+        # actually generated ones
+        for trt_model in models.TrtModel.objects.filter(
+                lt_model__hazard_calculation=self.hc):
+            trt_model.num_ruptures = self.num_ruptures.get(trt_model.id, 0)
+            trt_model.save()
         super(EventBasedHazardCalculator, self).post_execute()
         if not self.hc.ground_motion_fields:
             return  # do nothing
