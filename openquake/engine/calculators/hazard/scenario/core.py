@@ -116,6 +116,10 @@ class ScenarioHazardCalculator(haz_general.BaseHazardCalculator):
             self.hc.area_source_discretization,
         )(nrml)
 
+    def initialize_realizations(self):
+        """There are no realizations for the scenario calculator"""
+        pass
+
     def pre_execute(self):
         """
         Do pre-execution work. At the moment, this work entails:
@@ -194,3 +198,6 @@ class ScenarioHazardCalculator(haz_general.BaseHazardCalculator):
         for task_no, ruptures in enumerate(
                 block_splitter(ses_ruptures, self.rupture_block_size)):
             yield self.job.id, ruptures, self.sites, self.gmf.id, task_no
+
+    def task_completed(self, result):
+        """Do nothing"""
