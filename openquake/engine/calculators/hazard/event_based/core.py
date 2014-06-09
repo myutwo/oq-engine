@@ -468,7 +468,9 @@ class EventBasedHazardCalculator(general.BaseHazardCalculator):
         # actually generated ones
         for trt_model in models.TrtModel.objects.filter(
                 lt_model__hazard_calculation=self.hc):
+            trt_model.num_ruptures = self.num_ruptures.get(trt_model.id, 0)
             trt_model.save()
+        self.initialize_realizations()
         if not self.hc.ground_motion_fields:
             return  # do nothing
 
