@@ -13,7 +13,7 @@ ON DELETE CASCADE;
 ALTER TABLE hzrdr.trt_model ALTER COLUMN lt_model_id DROP NOT NULL;
 
 CREATE UNIQUE INDEX hzrdr_assoc_lt_rlz_trt_model_uniq_idx ON 
-hzrdr.assoc_lt_rlz_trt_model(trt_model_id, gsim);
+hzrdr.assoc_lt_rlz_trt_model(rlz_id, trt_model_id);
 
 -- imt table ----------------------------------------------------------
 /*

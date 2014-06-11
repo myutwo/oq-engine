@@ -45,7 +45,7 @@ CREATE INDEX hzrdr_hazard_curve_data_hazard_curve_id_idx on hzrdr.hazard_curve_d
 
 -- hzrdr.assoc_lt_rlz_trt_model
 CREATE UNIQUE INDEX hzrdr_assoc_lt_rlz_trt_model_uniq_idx ON 
-hzrdr.assoc_lt_rlz_trt_model(trt_model_id, gsim);
+hzrdr.assoc_lt_rlz_trt_model(rlz_id, trt_model_id);
 
 -- gmf
 CREATE INDEX hzrdr_gmf_output_id_idx on hzrdr.gmf(output_id);
