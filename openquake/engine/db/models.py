@@ -2038,10 +2038,10 @@ class Gmf(djm.Model):
             for ses in ses_coll:
                 gmfset = []  # set of GMFs generate by the same SES
                 for imt in imts:
+                    im_type, sa_period, sa_damping = from_string(imt)
                     for ses_rup, sites, gmf in self.get_data(
                             imt, ses_coll.id, ses.ordinal):
-                        im_type, sa_period, sa_damping = from_string(imt)
-                            # using a generator here saves a lot of memory
+                        # using a generator here saves a lot of memory
                         nodes = (_GroundMotionFieldNode(gmv, _Point(x, y))
                                  for gmv, x, y in
                                  zip(gmf, sites.lons, sites.lats))
