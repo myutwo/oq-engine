@@ -140,9 +140,10 @@ def split(items, nblocks):
     with a `.weight` attribute. The number of produced blocks
     will be close but not necessarily equal to `nblocks`.
 
-    :params items: a sequence of wighted items
+    :params items: a sequence of weighted items
     :param nblocks: hint for the number of blocks to generate
     """
+    assert nblocks > 0, nblocks
     pairs = [(item, item.weight) for item in items]
     weight = sum(w for (_, w) in pairs) / nblocks
     return split_on_max_weight(pairs, weight)

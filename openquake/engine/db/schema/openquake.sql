@@ -565,7 +565,7 @@ CREATE TABLE hzrdr.lt_realization (
     id SERIAL PRIMARY KEY,
     lt_model_id INTEGER NOT NULL, -- fk hzrdr.lt_mode.id
     ordinal INTEGER NOT NULL,
-    weight NUMERIC, -- path weight, used only for full paths enumeration
+    weight NUMERIC NOT NULL, -- path weight
     gsim_lt_path VARCHAR[] NOT NULL -- list of the logic tree branchIDs
 ) TABLESPACE hzrdr_ts;
 

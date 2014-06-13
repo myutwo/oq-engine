@@ -436,17 +436,14 @@ class BaseHazardCalculator(base.Calculator):
             return
         rlz_ordinal = idx * len(realizations)
         for gsim_by_trt, weight, lt_path in realizations:
-            if lt_model.weight is not None and weight is not None:
-                weight = lt_model.weight * weight
-            else:
-                weight = None
+            weight = (lt_model.weight or 1) * weight
             rlz = models.LtRealization.objects.create(
                 lt_model=lt_model, gsim_lt_path=lt_path,
                 weight=weight, ordinal=rlz_ordinal)
             rlz_ordinal += 1
             for trt_model in trt_models:
                 # populate the association table rlz <-> trt_model
-                models.AssocLtRlzTrtModel.objects.create(
+                models.AssocLtRlzTrtModel.objects.get_or_create(
                     rlz=rlz, trt_model=trt_model,
                     gsim=gsim_by_trt[trt_model.tectonic_region_type])
 
