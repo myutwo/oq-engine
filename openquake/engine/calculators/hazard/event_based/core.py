@@ -33,6 +33,7 @@ For more information on computing ground motion fields, see
 
 import time
 import random
+import operator
 import collections
 
 import numpy.random
@@ -123,7 +124,7 @@ def gmvs_to_haz_curve(gmvs, imls, invest_time, duration):
         multiplied by the number of stochastic event sets.
 
     :returns:
-        Numpy array of PoEs (probabilities of exceedence).
+        Numpy array of PoEs (probabilities of exceedance).
     """
     # convert to numpy array and redimension so that it can be broadcast with
     # the gmvs for computing PoE values
@@ -222,7 +223,7 @@ def compute_ruptures(
         # NB: the number of occurrences is very low, << 1, so it is
         # more efficient to filter only the ruptures that occur, i.e.
         # to call sample_number_of_occurrences() *before* the filtering
-        for rup in ses_num_occ.keys():
+        for rup in sorted(ses_num_occ, key=operator.attrgetter('rup_no')):
             with filter_ruptures_mon:  # filtering ruptures
                 r_sites = filters.filter_sites_by_distance_to_rupture(
                     rup, hc.maximum_distance, s_sites
@@ -331,7 +332,7 @@ class GmfCalculator(object):
             a dictionary of parameters with keys
             correl_model, truncation_level, maximum_distance
         :param imts:
-            a list of hazardlib intensity measure types
+            an ordered list of hazardlib intensity measure types
         :param int trt_model_id:
             the ID of a TRTModel instance
         :param int task_no:
@@ -396,27 +397,27 @@ class GmfCalculator(object):
         self.gmvs_per_site.clear()
         self.ruptures_per_site.clear()
 
-    def to_haz_curves(self, sids, imls, invest_time, num_ses):
+    def to_haz_curves(self, sids, imtls, invest_time, num_ses):
         """
         Convert the gmf into hazard curves (by gsim and imt)
 
         :param sids: database ids of the given sites
-        :param imls: dictionary {IMT: intensity measure levels}
+        :param imtls: dictionary {IMT: intensity measure levels}
         :param invest_time: investigation time
         :param num_ses: number of Stochastic Event Sets
         """
         gmf = collections.defaultdict(dict)  # (gsim, imt) > {site_id: poes}
         for (gsim, imt, site_id), gmvs in self.gmvs_per_site.iteritems():
             gmf[gsim, imt][site_id] = gmvs_to_haz_curve(
-                gmvs, imls[str(imt)], invest_time, num_ses * invest_time)
+                gmvs, imtls[str(imt)], invest_time, num_ses * invest_time)
         curves_by_gsim = []
         for gsim_obj in self.gsims:
             gsim = gsim_obj.__class__.__name__
             curves_by_imt = []
             for imt in self.imts:
-                curves_by_imt.append(
-                    numpy.array([gmf[gsim, imt].get(site_id, 0)
-                                 for site_id in sids]))
+                ground_motion_field = [gmf[gsim, imt].get(site_id, 0)
+                                       for site_id in sids]
+                curves_by_imt.append(ground_motion_field)
             curves_by_gsim.append((gsim, curves_by_imt))
         return curves_by_gsim
 
