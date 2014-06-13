@@ -172,7 +172,7 @@ class GroundMotionValuesGetter(HazardGetter):
     rupture_ids = None  # set by the GetterBuilder
     epsilons = None  # set by the GetterBuilder
 
-    def get_data_new(self, imt):
+    def get_data(self, imt):
         """
         Extracts the GMFs for the given `imt` from the hazard output.
 
@@ -223,7 +223,7 @@ class GroundMotionValuesGetter(HazardGetter):
             gmv_dict[sid] = dict(itertools.izip(ruptures, gmvs))
         return gmv_dict
 
-    def get_data(self, imt):
+    def get_data_old(self, imt):
         """
         Extracts the GMFs for the given `imt` from the hazard output.
 
