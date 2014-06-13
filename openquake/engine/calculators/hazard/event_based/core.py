@@ -464,7 +464,6 @@ class EventBasedHazardCalculator(general.BaseHazardCalculator):
                 for site_id in rdata.r_sites.sids:
                     self.site_ruptures[site_id].add(rdata.rupid)
 
-    @EnginePerformanceMonitor.monitor
     def post_execute(self):
         # first reset the number of ruptures to number of
         # actually generated ones
