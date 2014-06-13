@@ -198,16 +198,6 @@ class EventBasedHazardCalculatorTestCase(unittest.TestCase):
             rupture__ses_collection__output__oq_job=job.id).count()
         self.assertEqual(num_ruptures, 94)
 
-        # check that we generated the right number of rows in GmfData
-        # 242 = 121 sites * 2 IMTs
-        num_gmf1 = models.GmfData.objects.filter(
-            gmf__lt_realization=rlz1, task_no=0).count()
-        num_gmf2 = models.GmfData.objects.filter(
-            gmf__lt_realization=rlz2, task_no=0).count()
-
-        self.assertEqual(num_gmf1, 242)
-        self.assertEqual(num_gmf2, 242)
-
         # Now check for the correct number of hazard curves:
         curves = models.HazardCurve.objects.filter(output__oq_job=job)
         # ((2 IMTs * 2 rlz) + (2 IMTs * (1 mean + 2 quantiles))) = 10

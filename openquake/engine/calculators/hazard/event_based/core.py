@@ -304,7 +304,7 @@ def compute_and_save_gmfs(job_id, sids, trt_model_id, rupture_data, task_no):
     calc = GmfCalculator(params, imts, gsims, trt_model_id, task_no)
 
     with EnginePerformanceMonitor(
-            'computing gmfs', job_id, compute_and_save_gmfs):
+            'computing and saving gmfs', job_id, compute_and_save_gmfs):
         calc.calc_gmfs(rupture_data)
 
     if hc.hazard_curves_from_gmfs:
@@ -316,9 +316,9 @@ def compute_and_save_gmfs(job_id, sids, trt_model_id, rupture_data, task_no):
     else:
         curves_by_gsim = []
 
-    with EnginePerformanceMonitor(
-            'saving gmfs', job_id, compute_and_save_gmfs):
-        calc.save_gmfs(rlzs)
+    #with EnginePerformanceMonitor(
+    #        'saving gmfs', job_id, compute_and_save_gmfs):
+    #    calc.save_gmfs(rlzs)
 
     return curves_by_gsim, trt_model_id, []
 
