@@ -178,7 +178,7 @@ class ProbabilisticRuptureTestCase(unittest.TestCase):
             hazard_calculation=job.hazard_calculation, ordinal=0,
             sm_lt_path='foo')
         lt_rlz = models.LtRealization.objects.create(
-            lt_model=lt_model, ordinal=0, gsim_lt_path='bar')
+            lt_model=lt_model, ordinal=0, gsim_lt_path='bar', weight=1)
         output = models.Output.objects.create(
             oq_job=job, display_name='test', output_type='ses')
         ses_coll = models.SESCollection.objects.create(
