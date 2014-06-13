@@ -207,16 +207,18 @@ class GroundMotionValuesGetter(HazardGetter):
             imt_query = 'imt=%s and sa_period is %s and sa_damping is %s'
         gmv_dict = {}
         cursor = models.getcursor('job_init')
-        cursor.execute('select site_id, rupture_ids, gmvs from '
-                       'hzrdr.gmf_data where gmf_id=%s and site_id in %s '
-                       'and {} order by site_id, task_no'.format(imt_query),
-                       (gmf_id, tuple(self.site_ids),
-                        imt_type, sa_period, sa_damping))
-        for sid, group in itertools.groupby(cursor, operator.itemgetter(0)):
+        query = ('select site_id, rupture_ids, gmvs from '
+                 'hzrdr.gmf_data where gmf_id=%s and site_id in %s '
+                 'and {} order by site_id, task_no'.format(imt_query))
+        qargs = (gmf_id, tuple(self.site_ids), imt_type, sa_period, sa_damping)
+        cursor.execute(query, qargs)
+        # to debug: print cursor.mogrify(query, qargs)
+        data = cursor.fetchall()
+        for sid, group in itertools.groupby(data, operator.itemgetter(0)):
             gmvs = []
             ruptures = []
-            for site_id, rupture_ids, gmvs in group:
-                gmvs.extend(gmvs)
+            for site_id, rupture_ids, _gmvs in group:
+                gmvs.extend(_gmvs)
                 ruptures.extend(rupture_ids)
             gmv_dict[sid] = dict(itertools.izip(ruptures, gmvs))
         return gmv_dict
