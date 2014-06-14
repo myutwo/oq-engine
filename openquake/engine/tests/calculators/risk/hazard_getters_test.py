@@ -56,7 +56,7 @@ class HazardCurveGetterTestCase(unittest.TestCase):
         ho = self.job.risk_calculation.hazard_output
         self.nbytes = self.builder.calc_nbytes([ho])
         [self.getter] = self.builder.make_getters(
-            self.getter_class, [ho], self.assets)
+            self.getter_class, [ho], self.assets, [self.imt])
 
     def test_nbytes(self):
         self.assertEqual(self.nbytes, 0)

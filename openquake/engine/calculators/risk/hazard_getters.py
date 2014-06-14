@@ -87,6 +87,7 @@ class HazardGetter(object):
         self.assets = assets
         self.site_ids = site_ids
         self.epsilons = None
+        self.data = {}  # imt -> data
 
     def __repr__(self):
         shape = getattr(self.epsilons, 'shape', None)
@@ -388,7 +389,7 @@ ORDER BY exp.id, ST_Distance(exp.site, hsite.location, false)
                 indices.append(idx)
         return indices, assets, site_ids
 
-    def make_getters(self, gettercls, hazard_outputs, asset_block):
+    def make_getters(self, gettercls, hazard_outputs, asset_block, imts):
         """
         Build the appropriate hazard getters from the given hazard
         outputs. The assets which have no corresponding hazard site
@@ -400,6 +401,7 @@ ORDER BY exp.id, ST_Distance(exp.site, hsite.location, false)
         :param gettercls: the HazardGetter subclass to use
         :param hazard_outputs: the outputs of a hazard calculation
         :param asset_block: a block of assets
+        :param imts: a set of strings denoting Intensity Measure Types
 
         :returns: a list of HazardGetter instances
         """
@@ -422,5 +424,7 @@ ORDER BY exp.id, ST_Distance(exp.site, hsite.location, false)
             elif self.hc.calculation_mode == 'scenario':
                 getter.num_samples = self.epsilons_shape[0][1]
                 getter.epsilons = self.epsilons[0][indices]
+            for imt in imts:
+                getter.data[imt] = getter.get_data(imt)
             getters.append(getter)
         return getters
