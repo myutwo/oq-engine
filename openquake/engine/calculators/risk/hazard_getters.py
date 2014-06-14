@@ -197,10 +197,10 @@ class GroundMotionValuesGetter(HazardGetter):
 
     def store_data(self, imt):
         """
-        Extracts the GMFs for the given `imt` from the hazard output.
+        Store the GMFs for the given `imt` from the hazard output for
+        each site in the .data[imt, site_id] dictionary.
 
         :param str imt: Intensity Measure Type
-        :returns: a dictionary {site_id: gmvs}
         """
         imt_type, sa_period, sa_damping = from_string(imt)
         gmv_dict = self._get_gmv_dict(imt_type, sa_period, sa_damping)
