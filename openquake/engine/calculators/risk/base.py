@@ -81,6 +81,7 @@ def distribute_by_assets(job_id, calc, taxonomy, counts, outputdict):
     task_no = 0
     name = calc.core_calc_task.__name__ + '[%s]' % taxonomy
     otm = tasks.OqTaskManager(calc.core_calc_task, logs.LOG.progress, name)
+    risk_model = calc.risk_models[taxonomy]
     with calc.monitor("building epsilons"):
         builder.init_epsilons(haz_outs)
     for offset in range(0, counts, BLOCK_SIZE):
@@ -90,7 +91,7 @@ def distribute_by_assets(job_id, calc, taxonomy, counts, outputdict):
         with calc.monitor("building getters"):
             try:
                 getters = builder.make_getters(
-                    calc.getter_class, haz_outs, assets)
+                    calc.getter_class, haz_outs, assets, risk_model.imts)
             except hazard_getters.AssetSiteAssociationError as err:
                 # TODO: add a test for this corner case
                 # https://bugs.launchpad.net/oq-engine/+bug/1317796
@@ -99,7 +100,6 @@ def distribute_by_assets(job_id, calc, taxonomy, counts, outputdict):
         # submitting task
         task_no += 1
         logs.LOG.info('Built task #%d for taxonomy %s', task_no, taxonomy)
-        risk_model = calc.risk_models[taxonomy]
         otm.submit(calc.job.id, risk_model, getters, outputdict,
                    calc.calculator_parameters)
 
@@ -258,11 +258,11 @@ class RiskCalculator(base.Calculator):
         risk_models = {}
         orig_data = self._get_vfs(retrofitted=False)
         retro_data = self._get_vfs(retrofitted=True)
-
         for orig, retro in zip(orig_data, retro_data):
             taxonomy, vfs = orig
             taxonomy_, vfs_ = retro
-            assert taxonomy_ == taxonomy_  # same taxonomy
+            # must be same taxonomy
+            assert taxonomy == taxonomy_, (taxonomy, taxonomy_)
             risk_models[taxonomy] = RiskModel(
                 taxonomy, self.get_workflow(vfs, vfs_))
 
@@ -279,7 +279,7 @@ class RiskCalculator(base.Calculator):
         :returns:
             A dictionary taxonomy -> instance of `RiskModel`.
         """
-        data = collections.defaultdict(list)  # imt, loss_type, vf per taxonomy
+        data = collections.defaultdict(list)  # loss_type, vf per taxonomy
         for v_input, loss_type in self.rc.vulnerability_inputs(retrofitted):
             self.loss_types.add(loss_type)
             for taxonomy, vf in loaders.vulnerability(v_input).items():

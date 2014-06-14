@@ -42,7 +42,7 @@ class BaseRiskCalculatorTestCase(unittest.TestCase):
 
 class FakeWorkflow:
     """Fake Workflow class used in FakeRiskCalculator"""
-
+    vulnerability_functions = {}
 
 class FakeRiskCalculator(base.RiskCalculator):
     """

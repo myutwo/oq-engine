@@ -95,6 +95,7 @@ class HazardGetter(object):
         self.assets = assets
         self.site_ids = site_ids
         self.epsilons = None
+        self.data = {}  # imt -> data
 
     def __repr__(self):
         shape = getattr(self.epsilons, 'shape', None)
@@ -102,11 +103,18 @@ class HazardGetter(object):
         return "<%s %d assets%s>" % (
             self.__class__.__name__, len(self.assets), eps)
 
-    def get_data(self):
+    def store_data(self, imt):
         """
-        Subclasses must implement this.
+        To be overridden
         """
-        raise NotImplementedError
+
+    def get_data(self, imt):
+        """
+        Extract hazard data from the underlying data dictionary
+        """
+        if not self.data:
+            self.store_data(imt)
+        return [self.data[imt, site_id] for site_id in self.site_ids]
 
     @property
     def hid(self):
@@ -172,7 +180,7 @@ class GroundMotionValuesGetter(HazardGetter):
     rupture_ids = None  # set by the GetterBuilder
     epsilons = None  # set by the GetterBuilder
 
-    def get_data(self, imt):
+    def store_data(self, imt):
         """
         Extracts the GMFs for the given `imt` from the hazard output.
 
@@ -189,57 +197,11 @@ class GroundMotionValuesGetter(HazardGetter):
         if not site2gmv:
             raise NoHazardError('No data for output=%s, imt=%s' %
                                 (self.hazard_output, imt))
-        all_gmvs = []
-        for site_id in self.site_ids:
+
+        for site_id in set(self.site_ids):
             array = numpy.array([site2gmv[r].get(site_id, 0.)
                                  for r in rupture_ids])
-            all_gmvs.append(array)
-        return all_gmvs
-
-    def _get_gmv_dict(self, imt_type, sa_period, sa_damping):
-        """
-        :returns: a dictionary {rupture_id: gmv} for the given site and IMT
-        """
-        gmf_id = self.hazard_output.output_container.id
-        if sa_period:
-            imt_query = 'imt=%s and sa_period=%s and sa_damping=%s'
-        else:
-            imt_query = 'imt=%s and sa_period is %s and sa_damping is %s'
-        gmv_dict = {}
-        cursor = models.getcursor('job_init')
-        query = ('select site_id, rupture_ids, gmvs from '
-                 'hzrdr.gmf_data where gmf_id=%s and site_id in %s '
-                 'and {} order by site_id, task_no'.format(imt_query))
-        qargs = (gmf_id, tuple(self.site_ids), imt_type, sa_period, sa_damping)
-        cursor.execute(query, qargs)
-        # to debug: print cursor.mogrify(query, qargs)
-        data = cursor.fetchall()
-        for sid, group in itertools.groupby(data, operator.itemgetter(0)):
-            gmvs = []
-            ruptures = []
-            for site_id, rupture_ids, gmvs_chunk in group:
-                gmvs.extend(gmvs_chunk)
-                ruptures.extend(rupture_ids)
-            gmv_dict[sid] = dict(itertools.izip(ruptures, gmvs))
-        return gmv_dict
-
-    def get_data_old(self, imt):
-        """
-        Extracts the GMFs for the given `imt` from the hazard output.
-
-        :param str imt: Intensity Measure Type
-        :returns: a list of N arrays with R elements each.
-        """
-        imt_type, sa_period, sa_damping = from_string(imt)
-        gmv_dict = self._get_gmv_dict(imt_type, sa_period, sa_damping)
-        all_gmvs = []
-        for site_id in self.site_ids:
-            gmv = gmv_dict.get(site_id, {})
-            if not gmv:
-                logs.LOG.info('No data for site_id=%d, imt=%s', site_id, imt)
-            array = numpy.array([gmv.get(r, 0.) for r in self.rupture_ids])
-            all_gmvs.append(array)
-        return all_gmvs
+            self.data[imt, site_id] = array
 
 
 class ScenarioGetter(HazardGetter):
@@ -422,7 +384,7 @@ ORDER BY exp.id, ST_Distance(exp.site, hsite.location, false)
                 indices.append(idx)
         return indices, assets, site_ids
 
-    def make_getters(self, gettercls, hazard_outputs, asset_block):
+    def make_getters(self, gettercls, hazard_outputs, asset_block, imts):
         """
         Build the appropriate hazard getters from the given hazard
         outputs. The assets which have no corresponding hazard site
@@ -434,6 +396,7 @@ ORDER BY exp.id, ST_Distance(exp.site, hsite.location, false)
         :param gettercls: the HazardGetter subclass to use
         :param hazard_outputs: the outputs of a hazard calculation
         :param asset_block: a block of assets
+        :param imts: a set of strings denoting Intensity Measure Types
 
         :returns: a list of HazardGetter instances
         """
@@ -456,5 +419,7 @@ ORDER BY exp.id, ST_Distance(exp.site, hsite.location, false)
             elif self.hc.calculation_mode == 'scenario':
                 getter.num_samples = self.epsilons_shape[0][1]
                 getter.epsilons = self.epsilons[0][indices]
+            for imt in imts:
+                getter.store_data(imt)
             getters.append(getter)
         return getters
