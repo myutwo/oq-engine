@@ -87,7 +87,7 @@ class HazardGetter(object):
         self.assets = assets
         self.site_ids = site_ids
         self.epsilons = None
-        self.data = {}  # imt -> data
+        self.data = None  # imt -> data
 
     def __repr__(self):
         shape = getattr(self.epsilons, 'shape', None)
@@ -104,6 +104,8 @@ class HazardGetter(object):
         """
         Extract hazard data from the underlying data dictionary
         """
+        if self.data is None:
+            self.store_data(imt)
         return [self.data[imt, site_id] for site_id in self.site_ids]
 
     @property
@@ -428,7 +430,5 @@ ORDER BY exp.id, ST_Distance(exp.site, hsite.location, false)
             elif self.hc.calculation_mode == 'scenario':
                 getter.num_samples = self.epsilons_shape[0][1]
                 getter.epsilons = self.epsilons[0][indices]
-            for imt in imts:
-                getter.store_data(imt)
             getters.append(getter)
         return getters
