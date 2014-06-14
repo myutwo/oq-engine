@@ -30,11 +30,7 @@ class EBHazardSpatialCorrelCase3TestCase(qa_utils.BaseQATestCase):
         job = self.run_hazard(cfg)
         hc = job.hazard_calculation
 
-        site_1 = 'POINT(0.0 0.0)'
-        site_2 = 'POINT(0.008993 0.0)'
-
-        gmvs_site_1 = sc_utils.get_gmvs_for_location(site_1, job)
-        gmvs_site_2 = sc_utils.get_gmvs_for_location(site_2, job)
+        gmvs_site_1, gmvs_site_2 = sc_utils.get_gmvs_per_location(job)
 
         joint_prob_0_5 = sc_utils.joint_prob_of_occurrence(
             gmvs_site_1, gmvs_site_2, 0.5, hc.investigation_time,
