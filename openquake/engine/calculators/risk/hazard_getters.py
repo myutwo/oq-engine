@@ -95,11 +95,16 @@ class HazardGetter(object):
         return "<%s %d assets%s>" % (
             self.__class__.__name__, len(self.assets), eps)
 
-    def get_data(self):
+    def store_data(self, imt):
         """
-        Subclasses must implement this.
+        To be overridden
         """
-        raise NotImplementedError
+
+    def get_data(self, imt):
+        """
+        Extract hazard data from the underlying data dictionary
+        """
+        return [self.data[imt, site_id] for site_id in self.site_ids]
 
     @property
     def hid(self):
@@ -190,23 +195,22 @@ class GroundMotionValuesGetter(HazardGetter):
             gmv_dict[sid] = dict(itertools.izip(ruptures, gmvs))
         return gmv_dict
 
-    def get_data(self, imt):
+    def store_data(self, imt):
         """
         Extracts the GMFs for the given `imt` from the hazard output.
 
         :param str imt: Intensity Measure Type
-        :returns: a list of N arrays with R elements each.
+        :returns: a dictionary {site_id: gmvs}
         """
         imt_type, sa_period, sa_damping = from_string(imt)
         gmv_dict = self._get_gmv_dict(imt_type, sa_period, sa_damping)
-        all_gmvs = []
-        for site_id in self.site_ids:
+        for site_id in set(self.site_ids):
             gmv = gmv_dict.get(site_id, {})
-            if not gmv:
+            if gmv:
+                array = numpy.array([gmv.get(r, 0.) for r in self.rupture_ids])
+                self.data[imt, site_id] = array
+            else:
                 logs.LOG.info('No data for site_id=%d, imt=%s', site_id, imt)
-            array = numpy.array([gmv.get(r, 0.) for r in self.rupture_ids])
-            all_gmvs.append(array)
-        return all_gmvs
 
 
 class ScenarioGetter(HazardGetter):
@@ -425,6 +429,6 @@ ORDER BY exp.id, ST_Distance(exp.site, hsite.location, false)
                 getter.num_samples = self.epsilons_shape[0][1]
                 getter.epsilons = self.epsilons[0][indices]
             for imt in imts:
-                getter.data[imt] = getter.get_data(imt)
+                getter.store_data(imt)
             getters.append(getter)
         return getters
