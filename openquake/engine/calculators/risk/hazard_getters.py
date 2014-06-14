@@ -87,7 +87,7 @@ class HazardGetter(object):
         self.assets = assets
         self.site_ids = site_ids
         self.epsilons = None
-        self.data = None  # imt -> data
+        self.data = {}  # imt -> data
 
     def __repr__(self):
         shape = getattr(self.epsilons, 'shape', None)
@@ -104,7 +104,7 @@ class HazardGetter(object):
         """
         Extract hazard data from the underlying data dictionary
         """
-        if self.data is None:
+        if not self.data:
             self.store_data(imt)
         return [self.data[imt, site_id] for site_id in self.site_ids]
 
