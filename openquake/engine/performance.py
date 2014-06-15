@@ -218,6 +218,9 @@ class DummyMonitor(PerformanceMonitor):
     def copy(self, operation):
         return self.__class__(operation, self.job_id)
 
+    def flush(self):
+        pass
+
     def __enter__(self):
         return self
 

@@ -96,18 +96,10 @@ class GmfCalculatorTestCase(unittest.TestCase):
         pga = PGA()
         rlz = mock.Mock()
         rlz.id = 1
-        coll = core.GmfCalculator(
-            params, [pga], [gsim], trt_model_id=1, task_no=0)
+        coll = core.GmfCalculator(params, [pga], [gsim], trt_model_id=1)
         rdata = core.RuptureData(site_coll, rup.rupture, rup_id,
                                  [(rup.id, rup_seed)])
-        coll.calc_gmfs([rdata])
-        expected_rups = {
-            ('AkkarBommer2010', pga, 0): [rup_id],
-            ('AkkarBommer2010', pga, 1): [rup_id],
-            ('AkkarBommer2010', pga, 2): [rup_id],
-            ('AkkarBommer2010', pga, 3): [rup_id],
-            ('AkkarBommer2010', pga, 4): [rup_id],
-        }
+        coll.calc_gmfs([rdata], save=False)
         expected_gmvs = {
             ('AkkarBommer2010', pga, 0): [0.1027847118266612],
             ('AkkarBommer2010', pga, 1): [0.02726361912605336],
@@ -115,7 +107,6 @@ class GmfCalculatorTestCase(unittest.TestCase):
             ('AkkarBommer2010', pga, 3): [0.04727148908077005],
             ('AkkarBommer2010', pga, 4): [0.04750575818347277],
         }
-        numpy.testing.assert_equal(coll.ruptures_per_site, expected_rups)
         for i, gmvs in expected_gmvs.iteritems():
             numpy.testing.assert_allclose(gmvs, expected_gmvs[i])
 
