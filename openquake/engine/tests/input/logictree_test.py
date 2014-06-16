@@ -49,7 +49,7 @@ class LogicTreeProcessorTestCase(unittest.TestCase):
         self.assertEqual(value,
                          {'Subduction Interface': 'SadighEtAl1997',
                           'Active Shallow Crust': 'ChiouYoungs2008'})
-        self.assertIsNone(weight)
+        self.assertEqual(weight, 0.5)
         self.assertEqual(('b2', 'b3'), branch_ids)
 
 
