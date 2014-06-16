@@ -362,6 +362,7 @@ class GmfCalculator(object):
                         self.imts, self.gsims, self.params['truncation_level'],
                         self.params['correl_model']):
                     gmf_dict[gsim_name, imt, rupid].append(gmv)
+                    self.gmvs_per_site[gsim_name, imt, site_id].append(gmv)
             if save:
                 with save_mon:
                     for (gsim_name, imt, rupid), gmvs in gmf_dict.iteritems():
@@ -369,6 +370,7 @@ class GmfCalculator(object):
                             models.GmfRupture(
                                 rupture_id=rupid, gsim=gsim_name, imt=str(imt),
                                 ground_motion_field=gmvs))
+
         inserter.flush()
         calc_mon.flush()
         save_mon.flush()
