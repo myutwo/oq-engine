@@ -1,4 +1,4 @@
-# Copyright (c) 2010-2014, GEM Foundation.
+# Copyright (c) 2014, GEM Foundation.
 #
 # OpenQuake is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Affero General Public License as published
@@ -12,15 +12,3 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with OpenQuake.  If not, see <http://www.gnu.org/licenses/>.
-
-import os.path
-from qa_tests import _utils
-
-
-class DisaggHazardCase1TestCase(_utils.DisaggHazardTestCase):
-    working_dir = os.path.dirname(__file__)
-    imts = ['PGA', 'SA-0.025']
-    fnames = [
-        'disagg_matrix(0.02)-lon_10.1-lat_40.1-smltp_b1-gsimltp_b1.xml',
-        'disagg_matrix(0.1)-lon_10.1-lat_40.1-smltp_b1-gsimltp_b1.xml',
-    ]
