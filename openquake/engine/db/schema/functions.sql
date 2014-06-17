@@ -92,7 +92,6 @@ CREATE OR REPLACE VIEW hzrdr.gmf_view AS
    hzrdr.ses_rupture AS d,
    hzrdr.lt_realization AS e
    WHERE c.rupture_id=d.id
-   AND d.id=c.rupture_id
    AND d.rupture_id=b.id
    AND a.trt_model_id=b.trt_model_id
    AND c.gsim=a.gsim
