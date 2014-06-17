@@ -21,13 +21,24 @@ from nose.plugins.attrib import attr
 from openquake.engine.db import models
 from qa_tests import _utils as qa_utils
 
-GET_GMF_OUTPUTS = '''
-select gsim_lt_path, array_concat(gmvs order by site_id, task_no) as gmf
-from hzrdr.gmf_data as a, hzrdr.lt_realization as b, hzrdr.gmf as c
-where lt_realization_id=b.id and a.gmf_id=c.id and c.output_id in
-(select id from uiapi.output where oq_job_id=%d and output_type='gmf')
-group by gsim_lt_path, c.output_id, imt, sa_period, sa_damping
-order by c.output_id;
+GET_GMF_OUTPUTS = '''\
+   SELECT gsim_lt_path, array_concat(ground_motion_field) as gmf
+   FROM hzrdr.assoc_lt_rlz_trt_model AS a,
+   hzrdr.probabilistic_rupture AS b,
+   hzrdr.gmf_rupture AS c,
+   hzrdr.ses_rupture AS d,
+   hzrdr.lt_realization AS e,
+   hzrdr.gmf as f
+   WHERE c.rupture_id=d.id
+   AND d.rupture_id=b.id
+   AND a.trt_model_id=b.trt_model_id
+   AND c.gsim=a.gsim
+   AND a.rlz_id=e.id
+   AND f.lt_realization_id=e.id
+   AND f.output_id IN
+   (select id from uiapi.output where oq_job_id=%d and output_type='gmf')
+   GROUP BY gsim_lt_path
+   ORDER BY gsim_lt_path
 '''
 
 # this is an example with 0 realization for source_model 1
