@@ -778,7 +778,7 @@ class HazardCalculation(djm.Model):
         # ordering no ruptures are generated and the test
         # qa_tests/hazard/disagg/case_1/test.py fails with a bad
         # error message
-        if self.site_model:
+        if self.inputs and self.site_model:
             sites = []
             for hsite in hsites:
                 pt = geo.point.Point(hsite.location.x, hsite.location.y)

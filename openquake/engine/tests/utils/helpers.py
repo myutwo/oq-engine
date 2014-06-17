@@ -427,13 +427,12 @@ def create_gmf_data_records(hazard_job, rlz=None, ses_coll=None, points=None):
     return records
 
 
-# NB: create_gmf_from_csv and populate_gmf_data_from_csv
-# will be unified in the future
 def create_gmf_from_csv(job, fname):
     """
-    Populate the gmf_data table for an event_based calculation.
+    Populate the gmf_rupture table.
     """
     hc = job.hazard_calculation
+    models.JobStats.objects.create(oq_job=job)
     hc.investigation_time = 50
     hc.ses_per_logic_tree_path = 1
     hc.save()
@@ -444,30 +443,55 @@ def create_gmf_from_csv(job, fname):
     job.save()
 
     gmf = create_gmf(job)
+    models.Imt.save_new(['PGA'])
 
     ses_coll = models.SESCollection.objects.create(
         output=models.Output.objects.create_output(
             job, "Test SES Collection", "ses"),
         lt_model=gmf.lt_realization.lt_model,
         ordinal=0)
+
     with open(fname, 'rb') as csvfile:
+        # reading a file with format
+        # -20.48 37.25, -120.1 37.22, -121.9 38.2
+        # 0.001630433,0.00146562,0.00106554
+        # 0.0000000276,0.0000000203,0.0000000261
+        # ...
         gmfreader = csv.reader(csvfile, delimiter=',')
         locations = gmfreader.next()
 
+        # a matrix with shape (3, 564)
         gmv_matrix = numpy.array(
             [map(float, row) for row in gmfreader]).transpose()
 
-        ruptures = create_ses_ruptures(job, ses_coll, len(gmv_matrix[0]))
+    # creating 564 ruptures
+    ruptures = create_ses_ruptures(job, ses_coll, len(gmv_matrix[0]))
+    rup = ruptures[0].rupture
+    assoc = models.AssocLtRlzTrtModel.objects.filter(
+        rlz=gmf.lt_realization,
+        trt_model=rup.trt_model,
+        gsim='TestGSIM').count()
+    if not assoc:
+        models.AssocLtRlzTrtModel.objects.create(
+            rlz=gmf.lt_realization,
+            trt_model=rup.trt_model,
+            gsim='TestGSIM',
+        )
+    site_ids = []
+    data = {}
+    for i, gmvs in enumerate(gmv_matrix):
+        point = tuple(map(float, locations[i].split()))
+        [site_id] = job.hazard_calculation.save_sites([point])
+        data[site_id] = gmvs
+        site_ids.append(site_id)
 
-        for i, gmvs in enumerate(gmv_matrix):
-            point = tuple(map(float, locations[i].split()))
-            [site_id] = job.hazard_calculation.save_sites([point])
-            models.GmfData.objects.create(
-                gmf=gmf,
-                task_no=0,
-                imt="PGA", gmvs=gmvs,
-                rupture_ids=[r.id for r in ruptures],
-                site_id=site_id)
+    for i, rupt in enumerate(ruptures):
+        models.GmfRupture.objects.create(
+            rupture=rupt,
+            gsim='TestGSIM',
+            imt='PGA',
+            ground_motion_field=[data[sid][i] for sid in site_ids],
+        )
 
     return gmf
 
