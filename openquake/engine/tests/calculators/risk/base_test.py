@@ -80,5 +80,3 @@ class RiskCalculatorTestCase(BaseRiskCalculatorTestCase):
         # for the taxonomy and 1 subtask, for the two assets
         self.assertEqual(self.calculator.taxonomies_asset_count, {'VF': 2})
 
-        self.calculator.execute()
-        self.assertEqual(self.calculator.acc, {self.job.id: 1})

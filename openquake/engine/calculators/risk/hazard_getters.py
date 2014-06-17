@@ -95,26 +95,12 @@ class HazardGetter(object):
         self.assets = assets
         self.site_ids = site_ids
         self.epsilons = None
-        self.data = {}  # imt -> data
 
     def __repr__(self):
         shape = getattr(self.epsilons, 'shape', None)
         eps = ', %s epsilons' % str(shape) if shape else ''
         return "<%s %d assets%s>" % (
             self.__class__.__name__, len(self.assets), eps)
-
-    def store_data(self, imt):
-        """
-        To be overridden
-        """
-
-    def get_data(self, imt):
-        """
-        Extract hazard data from the underlying data dictionary
-        """
-        if not self.data:
-            self.store_data(imt)
-        return [self.data[imt, site_id] for site_id in self.site_ids]
 
     @property
     def hid(self):
@@ -180,7 +166,14 @@ class GroundMotionValuesGetter(HazardGetter):
     rupture_ids = None  # set by the GetterBuilder
     epsilons = None  # set by the GetterBuilder
 
-    def store_data(self, imt):
+    def __init__(self, hazard_output, assets, site_ids):
+        HazardGetter.__init__(self, hazard_output, assets, site_ids)
+        ses_coll = models.SESCollection.objects.get(
+            lt_model=hazard_output.output_container.lt_realization.lt_model)
+        self.relevant_rupture_ids = models.get_ses_rupture_ids(
+            site_ids, ses_coll)
+
+    def get_data(self, imt):
         """
         Extracts the GMFs for the given `imt` from the hazard output.
 
@@ -189,19 +182,21 @@ class GroundMotionValuesGetter(HazardGetter):
         """
         gmf = self.hazard_output.output_container
         site2gmv = {}
-        rupture_ids = []
-        for ses_rup, sites, gmfarray in gmf.get_data(imt):
-            rupture_ids.append(ses_rup.id)
+        for ses_rup, sites, gmfarray in gmf.get_data(
+                imt, ses_rupture_ids=self.relevant_rupture_ids):
             site2gmv[ses_rup.id] = dict(zip(sites.sids, gmfarray))
 
         if not site2gmv:
             raise NoHazardError('No data for output=%s, imt=%s' %
                                 (self.hazard_output, imt))
 
+        data = {}
         for site_id in set(self.site_ids):
-            array = numpy.array([site2gmv[r].get(site_id, 0.)
-                                 for r in rupture_ids])
-            self.data[imt, site_id] = array
+            data[site_id] = numpy.array(
+                [site2gmv.get(r, {}).get(site_id, 0.)
+                 for r in self.rupture_ids])
+
+        return [data[site_id] for site_id in self.site_ids]
 
 
 class ScenarioGetter(HazardGetter):
@@ -419,7 +414,5 @@ ORDER BY exp.id, ST_Distance(exp.site, hsite.location, false)
             elif self.hc.calculation_mode == 'scenario':
                 getter.num_samples = self.epsilons_shape[0][1]
                 getter.epsilons = self.epsilons[0][indices]
-            for imt in imts:
-                getter.store_data(imt)
             getters.append(getter)
         return getters

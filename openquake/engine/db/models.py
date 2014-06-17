@@ -1985,7 +1985,8 @@ class Gmf(djm.Model):
                                 imt=imt, gsim=gsim).ground_motion_field
                             yield ses_rup, sites, gmf
 
-    def get_data(self, imt, ses_collection_id=None, ses_ordinal=None):
+    def get_data(self, imt, ses_collection_id=None,
+                 ses_ordinal=None, ses_rupture_ids=None):
         """
         Yields triples (ses_rupture, sites, gmf_dict), by retrieving
         the precomputed data from the table GmfRupture.
@@ -1993,13 +1994,17 @@ class Gmf(djm.Model):
         query = """\
         select ses_rup_id, site_indices, ground_motion_field from
         hzrdr.gmf_view where rlz_id=%s and imt=%s"""
+        qargs = (self.lt_realization.id, imt)
         hc = self.output.oq_job.hazard_calculation
         if ses_collection_id:
             query += ' and ses_collection_id=%d' % ses_collection_id
         if ses_ordinal:
             query += ' and ses_ordinal=%d' % ses_ordinal
+        if ses_rupture_ids:
+            query += ' and ses_rup_id in %s'
+            qargs += (tuple(ses_rupture_ids),)
         cursor = getcursor('job_init')
-        cursor.execute(query + 'order by tag', (self.lt_realization.id, imt))
+        cursor.execute(query + 'order by tag', qargs)
         for ses_rup_id, site_indices, gmf in cursor:
             sites = hc.site_collection if site_indices is None \
                 else FilteredSiteCollection(site_indices, hc.site_collection)
@@ -2715,10 +2720,9 @@ class LossFractionData(djm.Model):
 
 
 class LossMap(djm.Model):
-    '''
+    """
     Holds metadata for loss maps
-    '''
-
+    """
     output = djm.OneToOneField("Output", related_name="loss_map")
     hazard_output = djm.ForeignKey("Output", related_name="risk_loss_maps")
     insured = djm.BooleanField(default=False)
@@ -2747,11 +2751,10 @@ class LossMap(djm.Model):
 
 
 class LossMapData(djm.Model):
-    '''
+    """
     Holds an asset, its position and a value plus (for
     non-scenario maps) the standard deviation for its loss
-    '''
-
+    """
     loss_map = djm.ForeignKey("LossMap")
     asset_ref = djm.TextField()
     value = djm.FloatField()
@@ -3462,9 +3465,9 @@ class AssetManager(djm.GeoManager):
 
 
 class ExposureData(djm.Model):
-    '''
+    """
     Per-asset risk exposure data
-    '''
+    """
 
     NO_RETROFITTING_COST = "no retrofitting cost"
 
@@ -3600,7 +3603,6 @@ class HazardSite(djm.Model):
     Used only if a calculation defines a site model (otherwise, reference
     parameters are use for all points of interest).
     """
-
     hazard_calculation = djm.ForeignKey('HazardCalculation')
     location = djm.PointField(srid=DEFAULT_SRID)
 
@@ -3621,3 +3623,22 @@ class SiteRuptures(djm.Model):
     @property
     def ruptures(self):
         return ProbabilisticRupture.objects.filter(pk__in=self.rupture_ids)
+
+
+def get_ses_rupture_ids(site_ids, ses_coll=None):
+    """
+    :param site_ids:
+        a sequence of site IDs
+    :param ses_coll:
+        a SESCollection instance or None
+    :return:
+        the SESRupture instances relevant for the given sites and
+        belonging to the given SESCollection, if given
+    """
+    rupture_ids = set()
+    for sr in SiteRuptures.objects.filter(site__in=site_ids):
+        rupture_ids.update(sr.rupture_ids)
+    sesrups = SESRupture.objects.filter(rupture__in=rupture_ids)
+    if ses_coll:
+        sesrups = sesrups.filter(rupture__ses_collection=ses_coll)
+    return sorted(sesrups.values_list('id', flat=True))
