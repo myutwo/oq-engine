@@ -46,8 +46,8 @@ class HazardCurveGetterTestCase(unittest.TestCase):
         self.job.save()
         calc.pre_execute()
 
-        self.builder = hazard_getters.GetterBuilder(
-            self.taxonomy, self.job.risk_calculation)
+        self.builder = self.getter_class.builder_class(
+            self.getter_class, self.taxonomy, self.job.risk_calculation)
 
         self.assets = models.ExposureData.objects.filter(
             exposure_model=self.job.risk_calculation.exposure_model).order_by(
@@ -56,7 +56,7 @@ class HazardCurveGetterTestCase(unittest.TestCase):
         ho = self.job.risk_calculation.hazard_output
         self.nbytes = self.builder.calc_nbytes([ho])
         [self.getter] = self.builder.make_getters(
-            self.getter_class, [ho], self.assets, [self.imt])
+            [ho], self.assets, [self.imt])
 
     def test_nbytes(self):
         self.assertEqual(self.nbytes, 0)

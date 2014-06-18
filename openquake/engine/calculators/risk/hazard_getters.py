@@ -226,6 +226,9 @@ class DeterministicGetterBuilder(BaseGetterBuilder):
     def init_epsilons(self, hazard_outputs):
         pass
 
+    def calc_nbytes(self, hazard_outputs):
+        return 0
+
     def gen_getters(self, haz_outs, imts, assets):
         for asset_block in block_splitter(assets, BLOCK_SIZE):
             try:
