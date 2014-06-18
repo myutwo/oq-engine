@@ -33,14 +33,6 @@ from openquake.engine.performance import EnginePerformanceMonitor
 
 BLOCK_SIZE = 100  # number of assets per block
 
-MEMORY_ERROR = '''Running the calculation will require approximately
-%dM, i.e. more than the memory which is available right now (%dM).
-Please increase the free memory or apply a stringent region
-constraint to reduce the number of assets. Alternatively you can set
-epsilons_management=fast in openquake.cfg. It the correlation is
-nonzero, consider setting asset_correlation=0 to avoid building the
-correlation matrix.'''
-
 
 @tasks.oqtask
 def distribute_by_assets(job_id, calc, taxonomy, counts, outputdict):
@@ -60,49 +52,25 @@ def distribute_by_assets(job_id, calc, taxonomy, counts, outputdict):
     """
     logs.LOG.info('taxonomy=%s, assets=%d', taxonomy, counts)
     with calc.monitor("associating asset->site"):
-        builder = hazard_getters.GetterBuilder(
-            taxonomy, calc.rc, calc.eps_man)
+        builder = calc.getter_class.builder_class(
+            calc.getter_class, taxonomy, calc.rc, calc.eps_man)
     haz_outs = calc.rc.hazard_outputs()
-    nbytes = builder.calc_nbytes(haz_outs)
-    if nbytes:
-        estimate_mb = nbytes / 1024 / 1024 * 3
-        if calc.eps_man == 'fast' and calc.rc.asset_correlation == 0:
-            pass  # using much less memory than the estimate, don't log
-        else:
-            logs.LOG.info('epsilons_management=%s: '
-                          'you should need less than %dM (rough estimate)',
-                          calc.eps_man, estimate_mb)
-        phymem = psutil.phymem_usage()
-        available_memory = (1 - phymem.percent / 100) * phymem.total
-        available_mb = available_memory / 1024 / 1024
-        if calc.eps_man == 'full' and nbytes * 3 > available_memory:
-            raise MemoryError(MEMORY_ERROR % (estimate_mb, available_mb))
+    builder.check_size(haz_outs)
 
-    task_no = 0
     name = calc.core_calc_task.__name__ + '[%s]' % taxonomy
     otm = tasks.OqTaskManager(calc.core_calc_task, logs.LOG.progress, name)
     risk_model = calc.risk_models[taxonomy]
     with calc.monitor("building epsilons"):
         builder.init_epsilons(haz_outs)
-    for offset in range(0, counts, BLOCK_SIZE):
-        with calc.monitor("getting asset chunks"):
-            assets = models.ExposureData.objects.get_asset_chunk(
-                calc.rc, taxonomy, offset, BLOCK_SIZE)
-        with calc.monitor("building getters"):
-            try:
-                getters = builder.make_getters(
-                    calc.getter_class, haz_outs, assets, risk_model.imts)
-            except hazard_getters.AssetSiteAssociationError as err:
-                # TODO: add a test for this corner case
-                # https://bugs.launchpad.net/oq-engine/+bug/1317796
-                logs.LOG.warn('Taxonomy %s: %s', taxonomy, err)
-                continue
-        # submitting task
-        task_no += 1
-        logs.LOG.info('Built task #%d for taxonomy %s', task_no, taxonomy)
-        otm.submit(calc.job.id, risk_model, getters, outputdict,
-                   calc.calculator_parameters)
-
+    with calc.monitor("getting assets"):
+        assets = models.ExposureData.objects.get_asset_chunk(calc.rc, taxonomy)
+    with calc.monitor('submitting %s' % calc.core_calc_task.__name__):
+        task_no = 0
+        for getters in builder.gen_getters(haz_outs, risk_model.imts, assets):
+            task_no += 1
+            logs.LOG.info('Built task #%d for taxonomy %s', task_no, taxonomy)
+            otm.submit(calc.job.id, risk_model, getters, outputdict,
+                       calc.calculator_parameters)
     return otm
 
 

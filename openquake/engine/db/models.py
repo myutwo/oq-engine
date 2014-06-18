@@ -3303,10 +3303,9 @@ class CostType(djm.Model):
 
 
 class Occupancy(djm.Model):
-    '''
+    """
     Asset occupancy data
-    '''
-
+    """
     exposure_data = djm.ForeignKey("ExposureData")
     period = djm.TextField()
     occupants = djm.FloatField()
@@ -3319,8 +3318,7 @@ class AssetManager(djm.GeoManager):
     """
     Asset manager
     """
-
-    def get_asset_chunk(self, rc, taxonomy, offset, size):
+    def get_asset_chunk(self, rc, taxonomy, offset=0, size=None):
         """
         :returns:
 
@@ -3335,7 +3333,6 @@ class AssetManager(djm.GeoManager):
            occupants value for the risk calculation given in input and the cost
            for each cost type considered in `rc`
         """
-
         query, args = self._get_asset_chunk_query_args(
             rc, taxonomy, offset, size)
         return list(self.raw(query, args))
@@ -3352,7 +3349,7 @@ class AssetManager(djm.GeoManager):
             self._get_people_query_helper(
                 rc.exposure_model.category, rc.time_event))
 
-        args += occupants_args + (size, offset)
+        args += occupants_args + (offset,)
 
         cost_type_fields, cost_type_joins = self._get_cost_types_query_helper(
             rc.exposure_model.costtype_set.all())
@@ -3371,13 +3368,14 @@ class AssetManager(djm.GeoManager):
                   {occupants_cond}
             GROUP BY riski.exposure_data.id
             ORDER BY ST_X(geometry(site)), ST_Y(geometry(site))
-            LIMIT %s OFFSET %s
+            OFFSET %s
             """.format(people_field=people_field,
                        occupants_cond=occupants_cond,
                        costs=cost_type_fields,
                        costs_join=cost_type_joins,
                        occupancy_join=occupancy_join)
-
+        if size is not None:
+            query += 'LIMIT %s' % size
         return query, args
 
     def _get_people_query_helper(self, category, time_event):
