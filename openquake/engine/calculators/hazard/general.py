@@ -60,13 +60,6 @@ POES_PARAM_NAME = "POES"
 DILATION_ONE_METER = 1e-5
 
 
-def _normalize(prob, zero):
-    # make sure that the elements of prob are matrices with n_levels elements,
-    # possibly all zeros; zero is a matrix of n_sites * n_levels zeros
-    return numpy.array(
-        [zero[0] if all_equal(p, 0) else p for p in prob], dtype=float)
-
-
 def store_site_model(job, site_model_source):
     """Invoke site model parser and save the site-specified parameter data to
     the database.
@@ -216,7 +209,7 @@ class BaseHazardCalculator(base.Calculator):
         for gsim, probs in curves_by_gsim:
             pnes = []
             for prob, zero in itertools.izip(probs, self.zeros):
-                pnes.append(1 - _normalize(prob, zero))
+                pnes.append(1 - (zero if all_equal(prob, 0) else prob))
             pnes1 = numpy.array(pnes)
             pnes2 = 1 - acc.get((trt_model_id, gsim), self.zeros)
 
