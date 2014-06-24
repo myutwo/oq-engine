@@ -109,6 +109,8 @@ class BaseHazardCalculator(base.Calculator):
             config.get('hazard', 'source_max_weight'))
         self.rupture_block_size = int(
             config.get('hazard', 'rupture_block_size'))
+        self.concurrent_tasks = int(
+            config.get('hazard', 'concurrent_tasks'))
 
         # a dictionary site_id -> set of rupture ids
         self.site_ruptures = collections.defaultdict(set)

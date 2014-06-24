@@ -43,7 +43,7 @@ from openquake.hazardlib.calc import gmf, filters
 from openquake.hazardlib.imt import from_string
 
 from openquake.commonlib import logictree
-from openquake.commonlib.general import split_on_max_weight
+from openquake.commonlib.general import split_in_blocks
 
 from openquake.engine import logs, writer
 from openquake.engine.calculators.hazard import general
@@ -133,21 +133,6 @@ def gmvs_to_haz_curve(gmvs, imls, invest_time, duration):
     num_exceeding = numpy.sum(numpy.array(gmvs) >= imls, axis=1)
     poes = 1 - numpy.exp(- (invest_time / duration) * num_exceeding)
     return poes
-
-
-def split(items, nblocks):
-    """
-    Produce blocks of items from a list of items, each one
-    with a `.weight` attribute. The number of produced blocks
-    will be close but not necessarily equal to `nblocks`.
-
-    :params items: a sequence of weighted items
-    :param nblocks: hint for the number of blocks to generate
-    """
-    assert nblocks > 0, nblocks
-    pairs = [(item, item.weight) for item in items]
-    weight = sum(w for (_, w) in pairs) / nblocks
-    return split_on_max_weight(pairs, weight)
 
 
 @tasks.oqtask
@@ -475,7 +460,7 @@ class EventBasedHazardCalculator(general.BaseHazardCalculator):
         task_no = 0
         sids = self.hc.site_collection.sids
         for trt_model_id, rupture_data in self.rupt_collector.iteritems():
-            for rdata in split(rupture_data, 256):
+            for rdata in split_in_blocks(rupture_data, self.concurrent_tasks):
                 logs.LOG.info('Sending task #%s', task_no + 1)
                 otm.submit(self.job.id, sids, trt_model_id, rdata)
                 task_no += 1
