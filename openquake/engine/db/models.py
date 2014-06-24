@@ -49,6 +49,7 @@ from openquake.hazardlib.site import (
 
 from openquake.commonlib.general import distinct
 from openquake.commonlib import logictree
+from openquake.commonlib.riskloaders import loss_type_to_cost_type
 
 from openquake.engine.db import fields
 from openquake.engine import writer
@@ -90,7 +91,6 @@ MAX_SINT_32 = (2 ** 31) - 1
 
 #: Kind of supported type of loss outputs
 LOSS_TYPES = ["structural", "nonstructural", "fatalities", "contents"]
-
 
 #: relative tolerance to consider two risk outputs (almost) equal
 RISK_RTOL = 0.05
@@ -143,13 +143,6 @@ def _get_prep_value(self, value):
     return val
 
 djm.FloatField.get_prep_value = _get_prep_value
-
-
-def cost_type(loss_type):
-    if loss_type == "fatalities":
-        return "occupants"
-    else:
-        return loss_type
 
 
 def risk_almost_equal(o1, o2, key=lambda x: x, rtol=RISK_RTOL, atol=RISK_ATOL):
@@ -351,11 +344,8 @@ class JobStats(djm.Model):
     oq_job = djm.ForeignKey('OqJob')
     start_time = djm.DateTimeField(editable=False, default=datetime.utcnow)
     stop_time = djm.DateTimeField(editable=False)
-    # The number of total sites in job
-    num_sites = djm.IntegerField(null=True)
     # The disk space occupation in bytes
     disk_space = djm.IntegerField(null=True)
-    num_sources = fields.IntArrayField(null=True)
 
     class Meta:
         db_table = 'uiapi\".\"job_stats'
@@ -1128,22 +1118,6 @@ class RiskCalculation(djm.Model):
     @property
     def exposure_model(self):
         return self.preloaded_exposure_model or self.oqjob.exposuremodel
-
-    def vulnerability_inputs(self, retrofitted):
-        for loss_type in LOSS_TYPES:
-            ctype = cost_type(loss_type)
-
-            vulnerability_input = self.vulnerability_input(ctype, retrofitted)
-            if vulnerability_input is not None:
-                yield vulnerability_input, loss_type
-
-    def vulnerability_input(self, ctype, retrofitted=False):
-        if retrofitted:
-            input_type = "%s_vulnerability_retrofitted" % ctype
-        else:
-            input_type = "%s_vulnerability" % ctype
-
-        return self.inputs.get(input_type)
 
     @property
     def investigation_time(self):
@@ -3012,8 +2986,8 @@ class EventLossData(djm.Model):
         """
         Convert EventLossData into a CSV string
         """
-        return '%s,%s, %s' % (self.rupture.tag, self.rupture.rupture.mag,
-                              self.aggregate_loss)
+        return '%s,%s,%s' % (self.rupture.tag, self.rupture.rupture.mag,
+                             self.aggregate_loss)
 
 
 class BCRDistribution(djm.Model):
@@ -3265,7 +3239,7 @@ class ExposureModel(djm.Model):
             for computing losses for `loss_type`
         """
         if loss_type != "fatalities":
-            ct = cost_type(loss_type)
+            ct = loss_type_to_cost_type(loss_type)
             return self.exposuredata_set.filter(
                 cost__cost_type__name=ct).exists()
         else:
@@ -3537,7 +3511,6 @@ class ExposureData(djm.Model):
         """
         if loss_type == "fatalities":
             return getattr(self, "people")
-
         return getattr(self, loss_type)
 
     def retrofitted(self, loss_type):

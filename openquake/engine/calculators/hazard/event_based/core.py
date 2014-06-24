@@ -297,10 +297,11 @@ def compute_and_save_gmfs(job_id, sids, trt_model_id, rupture_data):
     params = dict(
         correl_model=hc.get_correl_model(),
         truncation_level=hc.truncation_level)
-    imts = map(from_string, hc.intensity_measure_types)
+    # the sorting is important when computing the hazard curves
+    sorted_imts = map(from_string, sorted(hc.intensity_measure_types))
     rlzs = models.TrtModel.objects.get(pk=trt_model_id).get_rlzs_by_gsim()
     gsims = [logictree.GSIM[gsim]() for gsim in rlzs]
-    calc = GmfCalculator(params, imts, gsims, trt_model_id)
+    calc = GmfCalculator(params, sorted_imts, gsims, trt_model_id)
     calc.calc_gmfs(
         rupture_data, save=True,
         monitor=LightMonitor('', job_id, compute_and_save_gmfs))
@@ -385,6 +386,8 @@ class GmfCalculator(object):
         :param num_ses: number of Stochastic Event Sets
         """
         gmf = collections.defaultdict(dict)  # (gsim, imt) > {site_id: poes}
+        zeros = {imt: numpy.zeros(len(imtls[str(imt)]))
+                 for imt in self.imts}
         for (gsim, imt, site_id), gmvs in self.gmvs_per_site.iteritems():
             gmf[gsim, imt][site_id] = gmvs_to_haz_curve(
                 gmvs, imtls[str(imt)], invest_time, num_ses * invest_time)
@@ -393,7 +396,7 @@ class GmfCalculator(object):
             gsim = gsim_obj.__class__.__name__
             curves_by_imt = []
             for imt in self.imts:
-                ground_motion_field = [gmf[gsim, imt].get(site_id, 0)
+                ground_motion_field = [gmf[gsim, imt].get(site_id, zeros[imt])
                                        for site_id in sids]
                 curves_by_imt.append(ground_motion_field)
             curves_by_gsim.append((gsim, curves_by_imt))

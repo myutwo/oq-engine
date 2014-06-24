@@ -162,6 +162,7 @@ class BaseHazardCalculator(base.Calculator):
                 yield args
                 task_no += 1
                 num_blocks += 1
+                task_no += 1
                 num_sources += len(block)
                 logs.LOG.info('Processing %d sources out of %d' %
                               sc.filtered_sources)
@@ -171,14 +172,6 @@ class BaseHazardCalculator(base.Calculator):
             trt_model.num_sources = num_sources
             trt_model.num_ruptures = sc.num_ruptures
             trt_model.save()
-
-        # save job_stats
-        js = models.JobStats.objects.get(oq_job=self.job)
-        js.num_sources = [model.get_num_sources()
-                          for model in models.LtSourceModel.objects.filter(
-                              hazard_calculation=self.hc)]
-        js.num_sites = len(sitecol)
-        js.save()
 
     def task_completed(self, result):
         """

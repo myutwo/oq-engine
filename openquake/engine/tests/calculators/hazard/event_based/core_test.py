@@ -189,6 +189,8 @@ class EventBasedHazardCalculatorTestCase(unittest.TestCase):
             rupture__ses_collection__output__oq_job=job.id).count()
         self.assertEqual(num_ruptures, 94)
 
+
+        # NB: with source_max_weight=20000 5 tasks are generated
         # Now check for the correct number of hazard curves:
         curves = models.HazardCurve.objects.filter(output__oq_job=job)
         # ((2 IMTs * 2 rlz) + (2 IMTs * (1 mean + 2 quantiles))) = 10
