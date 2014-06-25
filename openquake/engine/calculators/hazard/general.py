@@ -162,7 +162,6 @@ class BaseHazardCalculator(base.Calculator):
                         trt_model.id, gsims, task_no)
                 self._task_args.append(args)
                 yield args
-                task_no += 1
                 num_blocks += 1
                 task_no += 1
                 num_sources += len(block)
