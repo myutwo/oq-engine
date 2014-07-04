@@ -110,8 +110,6 @@ class BaseHazardCalculator(base.Calculator):
             config.get('hazard', 'source_max_weight'))
         self.concurrent_tasks = int(
             config.get('hazard', 'concurrent_tasks'))
-        self.concurrent_tasks = int(
-            config.get('hazard', 'concurrent_tasks'))
 
         # a dictionary trt_model_id -> num_ruptures
         self.num_ruptures = collections.defaultdict(int)
@@ -159,6 +157,7 @@ class BaseHazardCalculator(base.Calculator):
                         trt_model.id, gsims, task_no)
                 self._task_args.append(args)
                 yield args
+                task_no += 1
                 num_blocks += 1
                 num_sources += len(block)
                 logs.LOG.info('Processing %d sources out of %d' %

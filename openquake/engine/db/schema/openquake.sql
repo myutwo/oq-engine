@@ -457,12 +457,6 @@ CREATE TABLE hzrdr.gmf_data (
 ) TABLESPACE hzrdr_ts;
 
 
-CREATE TABLE hzrdr.site_ruptures (
-    id SERIAL PRIMARY KEY,
-    site_id INTEGER NOT NULL, -- fk to hzrdi.hazard_site
-    rupture_ids INTEGER[] NOT NULL);
-
-
 CREATE TABLE hzrdr.disagg_result (
     id SERIAL PRIMARY KEY,
     output_id INTEGER NOT NULL,  -- FK to uiapi.output

@@ -41,13 +41,6 @@ class EventBaseQATestCase1(risk.CompleteTestCase, risk.FixtureBasedQATestCase):
         ('smlt=00|ses=0296|src=3|rup=002-01', 5.55, 605.144033155),
     ]
 
-    # NB: instead I get
-    #    ('80.0000,82.0000|28.0000,30.0000',
-    #     (149151.051604689, 0.336224896458288)),
-    #    ('82.0000,84.0000|26.0000,28.0000',
-    #     (152271.548653352, 0.3432593007470749)),
-    #    ('84.0000,86.0000|26.0000,28.0000',
-    #     (142182.418810476, 0.32051580279463704)),
     def expected_output_data(self):
         branches = dict(
             b1=models.Output.HazardMetadata(

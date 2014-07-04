@@ -1759,11 +1759,6 @@ class ProbabilisticRupture(djm.Model):
             _hypocenter=[hp.longitude, hp.latitude, hp.depth],
             site_indices=site_indices)
 
-    @property
-    def tectonic_region_type(self):
-        """The TRT associated to the underlying trt_model"""
-        return self.trt_model.tectonic_region_type
-
     _geom = None
 
     @property
@@ -3617,37 +3612,3 @@ class HazardSite(djm.Model):
 
     class Meta:
         db_table = 'hzrdi\".\"hazard_site'
-
-
-class SiteRuptures(djm.Model):
-    """
-    Associations site_id -> ruptures contributing to that site
-    """
-    site = djm.ForeignKey('HazardSite')
-    rupture_ids = djm.IntegerField(null=False)
-
-    class Meta:
-        db_table = 'hzrdr\".\"site_ruptures'
-
-    @property
-    def ruptures(self):
-        return ProbabilisticRupture.objects.filter(pk__in=self.rupture_ids)
-
-
-def get_ses_rupture_ids(site_ids, ses_coll=None):
-    """
-    :param site_ids:
-        a sequence of site IDs
-    :param ses_coll:
-        a SESCollection instance or None
-    :return:
-        the SESRupture instances relevant for the given sites and
-        belonging to the given SESCollection, if given
-    """
-    rupture_ids = set()
-    for sr in SiteRuptures.objects.filter(site__in=site_ids):
-        rupture_ids.update(sr.rupture_ids)
-    sesrups = SESRupture.objects.filter(rupture__in=rupture_ids)
-    if ses_coll:
-        sesrups = sesrups.filter(rupture__ses_collection=ses_coll)
-    return sorted(sesrups.values_list('id', flat=True))
