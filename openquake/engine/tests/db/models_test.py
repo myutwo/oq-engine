@@ -199,6 +199,7 @@ class ProbabilisticRuptureTestCase(unittest.TestCase):
             Point(3.9, 2.2, 10), Point(4.90402718, 3.19634248, 10),
             Point(5.9, 2.2, 90), Point(4.89746275, 1.20365263, 90))
 
+        trt = 'Active Shallow Crust'
         trt_model = models.TrtModel.objects.create(
             lt_model=lt_model,
             tectonic_region_type=trt,
@@ -209,12 +210,12 @@ class ProbabilisticRuptureTestCase(unittest.TestCase):
             gsims=['testGSIM'])
         self.fault_rupture = models.ProbabilisticRupture.objects.create(
             ses_collection=ses_coll, magnitude=5, rake=0, surface=sfs,
-            is_from_fault_source=True, is_multi_surface=False,
-            trt_model=trt_model)
+            trt_model=trt_model, is_from_fault_source=True,
+            is_multi_surface=False)
         self.source_rupture = models.ProbabilisticRupture.objects.create(
             ses_collection=ses_coll, magnitude=5, rake=0, surface=ps,
-            is_from_fault_source=False, is_multi_surface=False,
-            trt_model=trt_model)
+            trt_model=trt_model, is_from_fault_source=False,
+            is_multi_surface=False)
 
     def test_fault_rupture(self):
         # Test loading a fault rupture from the DB, just to illustrate a use

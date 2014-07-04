@@ -19,6 +19,7 @@
 """Common code for the hazard calculators."""
 
 import os
+import random
 import itertools
 import collections
 
@@ -104,18 +105,14 @@ class BaseHazardCalculator(base.Calculator):
     def __init__(self, job):
         super(BaseHazardCalculator, self).__init__(job)
 
-        # two crucial parameters from openquake.cfg
+        # three crucial parameters from openquake.cfg
         self.source_max_weight = int(
             config.get('hazard', 'source_max_weight'))
-        self.rupture_block_size = int(
-            config.get('hazard', 'rupture_block_size'))
+        self.concurrent_tasks = int(
+            config.get('hazard', 'concurrent_tasks'))
         self.concurrent_tasks = int(
             config.get('hazard', 'concurrent_tasks'))
 
-        # a dictionary site_id -> set of rupture ids
-        self.site_ruptures = collections.defaultdict(set)
-        # a dictionary trt_model_id -> rupture_data
-        self.rupt_collector = collections.defaultdict(list)
         # a dictionary trt_model_id -> num_ruptures
         self.num_ruptures = collections.defaultdict(int)
         # now a dictionary (trt_model_id, gsim) -> poes
@@ -163,7 +160,6 @@ class BaseHazardCalculator(base.Calculator):
                 self._task_args.append(args)
                 yield args
                 num_blocks += 1
-                task_no += 1
                 num_sources += len(block)
                 logs.LOG.info('Processing %d sources out of %d' %
                               sc.filtered_sources)
@@ -176,7 +172,9 @@ class BaseHazardCalculator(base.Calculator):
 
     def task_completed(self, result):
         """
-        Simply call the method `agg_curves`
+        Simply call the method `agg_curves`.
+
+        :param result: the result of the .core_calc_task
         """
         self.agg_curves(self.curves, result)
 
@@ -291,6 +289,11 @@ class BaseHazardCalculator(base.Calculator):
             # save TrtModels for each tectonic region type
             gsims_by_trt = lt_model.make_gsim_lt(trts).values
             for sc in source_collectors:
+                if not sc.trt in gsims_by_trt:
+                    gsim_file = self.hc.inputs['gsim_logic_tree']
+                    raise ValueError(
+                        "Found in %r a tectonic region type %r inconsistent "
+                        "with the ones in %r" % (sm, sc.trt, gsim_file))
                 # NB: the source_collectors are ordered by number of sources
                 # and lexicographically, so the models are in the right order
                 trt_model_id = models.TrtModel.objects.create(
@@ -403,17 +406,31 @@ class BaseHazardCalculator(base.Calculator):
         number of the realization (zero-based).
         """
         logs.LOG.progress("initializing realizations")
+        num_samples = self.hc.number_of_logic_tree_samples
+        gsim_lt_dict = {}  # gsim_lt per source model logic tree path
         for idx, (sm, weight, sm_lt_path) in enumerate(self.source_model_lt):
             lt_model = models.LtSourceModel.objects.get(
                 hazard_calculation=self.hc, sm_lt_path=sm_lt_path)
-            lt = iter(lt_model.make_gsim_lt(seed=self.hc.random_seed + idx))
-            if self.hc.number_of_logic_tree_samples:  # sampling
-                rlzs = [lt.next()]  # pick one gsim realization
-            else:  # full enumeration
-                rlzs = list(lt)  # pick all gsim realizations
+            if not sm_lt_path in gsim_lt_dict:
+                gsim_lt_dict[sm_lt_path] = lt_model.make_gsim_lt()
+            gsim_lt = gsim_lt_dict[sm_lt_path]
+            if num_samples:  # sampling, pick just one gsim realization
+                rnd = random.Random(self.hc.random_seed + idx)
+                rlzs = [logictree.sample_one(gsim_lt, rnd)]
+            else:
+                rlzs = list(gsim_lt)  # full enumeration
             logs.LOG.info('Creating %d GMPE realization(s) for model %s, %s',
                           len(rlzs), lt_model.sm_name, lt_model.sm_lt_path)
             self._initialize_realizations(idx, lt_model, rlzs)
+        num_ind_rlzs = sum(gsim_lt.get_num_paths()
+                           for gsim_lt in gsim_lt_dict.itervalues())
+        if num_samples > num_ind_rlzs:
+            logs.LOG.warn("""
+The number of independent realizations is %d but you are using %d samplings.
+That means that some GMPEs will be sampled more than once, resulting in
+duplicated data and redundant computation. You should switch to full
+enumeration mode, i.e. set number_of_logic_tree_samples=0 in your .ini file.
+""", num_ind_rlzs, num_samples)
 
     @transaction.commit_on_success(using='job_init')
     def _initialize_realizations(self, idx, lt_model, realizations):

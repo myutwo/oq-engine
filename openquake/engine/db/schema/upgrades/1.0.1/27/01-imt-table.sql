@@ -1,8 +1,7 @@
 -- this is convenient to have tests changing the risk parameters on the fly
 GRANT SELECT,INSERT,UPDATE ON uiapi.risk_calculation TO oq_job_init;
 
-ALTER TABLE hzrdr.probabilistic_rupture ALTER COLUMN tectonic_region_type DROP NOT NULL;
---ALTER TABLE hzrdr.probabilistic_rupture DROP COLUMN tectonic_region_type;
+ALTER TABLE hzrdr.probabilistic_rupture DROP COLUMN tectonic_region_type;
 ALTER TABLE hzrdr.probabilistic_rupture ADD COLUMN trt_model_id INTEGER;
 
 -- hzrdr.probabilistic_rupture to hzrdr.trt_model FK
@@ -108,14 +107,3 @@ CREATE OR REPLACE VIEW hzrdr.gmf_view AS
    AND a.rlz_id=e.id;
 
 GRANT SELECT ON hzrdr.gmf_view TO oq_job_init;
-
--- site_ruptures table
-
-CREATE TABLE hzrdr.site_ruptures (
-    id SERIAL PRIMARY KEY,
-    site_id INTEGER NOT NULL, -- fk to hzrdi.hazard_site
-    rupture_ids INTEGER[] NOT NULL);
-
-ALTER TABLE hzrdr.site_ruptures OWNER TO oq_admin;
-GRANT USAGE ON hzrdr.site_ruptures_id_seq TO oq_job_init;
-GRANT SELECT,INSERT ON hzrdr.site_ruptures TO oq_job_init;

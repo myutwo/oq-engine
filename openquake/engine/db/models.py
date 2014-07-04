@@ -48,8 +48,8 @@ from openquake.hazardlib.site import (
     Site, SiteCollection, FilteredSiteCollection)
 
 from openquake.commonlib.general import distinct
-from openquake.commonlib import logictree
 from openquake.commonlib.riskloaders import loss_type_to_cost_type
+from openquake.commonlib import logictree
 
 from openquake.engine.db import fields
 from openquake.engine import writer
@@ -138,7 +138,7 @@ def _get_prep_value(self, value):
     if value is None:
         return None
     val = float(value)
-    if val < 1E-300:
+    if abs(val) < 1E-300:
         return 0.
     return val
 
@@ -785,9 +785,6 @@ class HazardCalculation(djm.Model):
             site_ids = [hsite.id for hsite in hsites]
             sc = SiteCollection.from_points(lons, lats, site_ids, self)
         self._site_collection = sc
-        js = JobStats.objects.get(oq_job=self.oqjob)
-        js.num_sites = len(sc)
-        js.save()
         return sc
 
     def get_imts(self):
@@ -1709,13 +1706,26 @@ class ProbabilisticRupture(djm.Model):
     """
     ses_collection = djm.ForeignKey('SESCollection')
     magnitude = djm.FloatField(null=False)
-    hypocenter = djm.PointField(srid=DEFAULT_SRID)
+    _hypocenter = fields.FloatArrayField(null=False)
     rake = djm.FloatField(null=False)
     trt_model = djm.ForeignKey('TrtModel')
     is_from_fault_source = djm.NullBooleanField(null=False)
     is_multi_surface = djm.NullBooleanField(null=False)
     surface = fields.PickleField(null=False)
     site_indices = fields.IntArrayField(null=True)
+
+    # NB (MS): the proper solution would be to store the hypocenter as a 3D
+    # point, however I was unable to do so, due to a bug in Django 1.3
+    # (I was getting a GeometryProxy exception).
+    # The GEOS library we are using does not even support
+    # the WKT for 3D points; that's why I am storing the point as a
+    # 3D array, as a workaround; luckily, we never perform any
+    # geospatial query on the hypocenter.
+    # we will be able to do better when we will upgrade (Geo)Django
+    @property
+    def hypocenter(self):
+        """Convert the 3D array into a hazardlib point"""
+        return geo.Point(*self._hypocenter)
 
     class Meta:
         db_table = 'hzrdr\".\"probabilistic_rupture'
@@ -1737,6 +1747,7 @@ class ProbabilisticRupture(djm.Model):
         iffs = is_from_fault_source(rupture)
         ims = is_multi_surface(rupture)
         lons, lats, depths = get_geom(rupture.surface, iffs, ims)
+        hp = rupture.hypocenter
         return cls.objects.create(
             ses_collection=ses_collection,
             magnitude=rupture.mag,
@@ -1745,8 +1756,13 @@ class ProbabilisticRupture(djm.Model):
             is_from_fault_source=iffs,
             is_multi_surface=ims,
             surface=rupture.surface,
-            hypocenter=rupture.hypocenter.wkt2d,
+            _hypocenter=[hp.longitude, hp.latitude, hp.depth],
             site_indices=site_indices)
+
+    @property
+    def tectonic_region_type(self):
+        """The TRT associated to the underlying trt_model"""
+        return self.trt_model.tectonic_region_type
 
     _geom = None
 
@@ -1882,10 +1898,7 @@ class SESRupture(djm.Model):
         return self.rupture.hypocenter
 
 
-class _Point(object):
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
+_Point = collections.namedtuple('_Point', 'x y')
 
 
 class Gmf(djm.Model):
@@ -1909,7 +1922,9 @@ class Gmf(djm.Model):
         gsims = self.lt_realization.get_gsim_instances()
         assert gsims, 'No GSIMs found for realization %d!' % \
             self.lt_realization.id  # look into hzdr.assoc_lt_rlz_trt_model
-        imts = map(from_string, hc.intensity_measure_types)
+        # NB: the IMTs must be sorted for consistency with the classical
+        # calculator when computing the hazard curves from the GMFs
+        imts = map(from_string, sorted(hc.intensity_measure_types))
         for ses_coll in SESCollection.objects.filter(
                 output__oq_job=self.output.oq_job):
             # filter by ses_collection
@@ -1930,12 +1945,13 @@ class Gmf(djm.Model):
                     for ses_rup in ses_ruptures:
                         yield ses_rup, sites, computer.compute(ses_rup.seed)
 
-    def _get_data(self, imt, ses_collection_id=None, ses_ordinal=None):
+    # this method in the future will replace __iter__, by enabling
+    # GMF-export by recomputation
+    def iternew(self):
         """
         Yields triples (ses_rupture, sites, gmf_dict), by retrieving
         the precomputed data from the table GmfRupture.
         """
-        hc = self.output.oq_job.hazard_calculation
         trt2gsim = self.lt_realization.get_trt_to_gsim()
         for ses_coll in SESCollection.objects.filter(
                 output__oq_job=self.output.oq_job):
@@ -2092,8 +2108,15 @@ class _GroundMotionFieldNode(object):
         self.gmv = gmv
         self.location = loc
 
+    def __lt__(self, other):
+        """
+        A reproducible ordering by lon and lat; used in
+        :function:`openquake.nrmllib.hazard.writers.gen_gmfs`
+        """
+        return self.location < other.location
+
     def __str__(self):
-        "Return lon, lat and gmv of the node in a compact string form"
+        """Return lon, lat and gmv of the node in a compact string form"""
         return '<X=%9.5f, Y=%9.5f, GMV=%9.7f>' % (
             self.location.x, self.location.y, self.gmv)
 
@@ -2361,22 +2384,19 @@ class LtSourceModel(djm.Model):
             lt_model=self, num_ruptures__gt=0).values_list(
             'tectonic_region_type', flat=True)
 
-    def make_gsim_lt(self, trts=(), seed=None):
+    def make_gsim_lt(self, trts=()):
         """
         Helper to instantiate a GsimLogicTree object from the logic tree file.
 
         :param trts:
             sequence of tectonic region types (if not given uses
-            .get_tectonic_region_types() extracting the relevant trts)
-        :param seed:
-            seed used for the sampling (if not given uses hc.random_seed)
+            .get_tectonic_region_types() which extracts the relevant trts)
         """
         hc = self.hazard_calculation
         fname = os.path.join(hc.base_path, hc.inputs['gsim_logic_tree'])
         return logictree.GsimLogicTree(
             fname, 'applyToTectonicRegionType',
-            trts or self.get_tectonic_region_types(),
-            hc.number_of_logic_tree_samples, seed or hc.random_seed)
+            trts or self.get_tectonic_region_types())
 
     def __iter__(self):
         """
@@ -2424,6 +2444,24 @@ class TrtModel(djm.Model):
         ordering = ['id']
         # NB: the TrtModels are built in the right order, see
         # BaseHazardCalculator.initialize_sources
+
+
+class SourceInfo(djm.Model):
+    """
+    Source specific infos
+    """
+    trt_model = djm.ForeignKey('TrtModel')
+    source_id = djm.TextField(null=False)
+    source_class = djm.TextField(null=False)
+    num_sources = djm.IntegerField(null=False)
+    num_sites = djm.IntegerField(null=False)
+    num_ruptures = djm.IntegerField(null=False)
+    occ_ruptures = djm.IntegerField(null=False)
+    calc_time = djm.FloatField(null=False)
+
+    class Meta:
+        db_table = 'hzrdr\".\"source_info'
+        ordering = ['trt_model_id', 'source_id']
 
 
 class AssocLtRlzTrtModel(djm.Model):
