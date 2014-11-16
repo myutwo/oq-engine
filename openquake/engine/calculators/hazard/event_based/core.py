@@ -347,8 +347,7 @@ class GmfCalculator(object):
         return curves_by_gsim
 
 
-@tasks.oqtask
-def save_gmfs(job_id, trt_model_id, rg_per_site):
+def save_gmfs(trt_model_id, rg_per_site):
     """
     Save the computed GMF data to the database.
     """
@@ -460,10 +459,11 @@ class EventBasedHazardCalculator(general.BaseHazardCalculator):
         self.acc = {}
         out = self.generate_gmfs_and_curves()
         if getattr(self.hc, 'ground_motion_fields', None):
-            nrows = tasks.starmap(
-                save_gmfs, ((self.job.id, k, v) for k, v in out.iteritems())
-            ).reduce()['nrows']
-            logs.LOG.info('Saved %d rows in gmf_data', nrows)
+            with self.monitor('saving gmfs'):
+                res = AccumDict()
+                for k, v in out.iteritems():
+                    res += save_gmfs(k, v)
+                logs.LOG.info('Saved %(nrows)d rows in gmf_data', res)
 
         # now save the curves, if any
         self.save_hazard_curves()
