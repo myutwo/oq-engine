@@ -226,6 +226,7 @@ _pkgbuild_innervm_run () {
     trap 'local LASTERR="$?" ; trap ERR ; (exit $LASTERR) ; return' ERR
 
     ssh $lxc_ip mkdir build-deb
+    scp -r .gnupg $lxc_ip:
     scp -r * $lxc_ip:build-deb
     gpg -a --export | ssh $lxc_ip "sudo apt-key add -"
     ssh $lxc_ip sudo apt-get update
